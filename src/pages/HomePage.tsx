@@ -1,11 +1,10 @@
-// src/pages/HomePage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { COUNTRIES } from "../data/countries";
+import { THEME } from "../theme"; 
 
 const STORAGE_KEY = "cdxplore_visited";
-const BRAND = "rgba(122,30,58,0.92)";
 
 type Country = {
   code: string;
@@ -38,6 +37,9 @@ const StatCard = ({
     transition={{ duration: 0.45 }}
     className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur
                dark:border-white/10 dark:bg-white/[0.04]"
+    style={{
+      boxShadow: `0 10px 30px rgba(2,6,23,0.06)`,
+    }}
   >
     <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
       {label}
@@ -45,9 +47,7 @@ const StatCard = ({
     <div className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">
       {value}
     </div>
-    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-      {sub}
-    </p>
+    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{sub}</p>
   </motion.div>
 );
 
@@ -62,9 +62,9 @@ const HomePage = () => {
   }, []);
 
   const stats = useMemo(() => {
-    const visitedList = countries.filter(c => visited.has(c.code));
-    const continents = new Set(countries.map(c => c.continent));
-    const visitedContinents = new Set(visitedList.map(c => c.continent));
+    const visitedList = countries.filter((c) => visited.has(c.code));
+    const continents = new Set(countries.map((c) => c.continent));
+    const visitedContinents = new Set(visitedList.map((c) => c.continent));
 
     return {
       visitedCount: visitedList.length,
@@ -76,19 +76,21 @@ const HomePage = () => {
 
   return (
     <section className="relative mx-auto max-w-6xl px-6 py-20">
-      {/* soft background glow */}
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute -top-32 -left-32 h-96 w-96 rounded-full blur-3xl"
-          style={{ background: "rgba(122,30,58,0.12)" }}
+          style={{ background: THEME.brand.glow }}
         />
         <div
-          className="absolute top-0 -right-32 h-96 w-96 rounded-full blur-3xl"
+          className="absolute top-0 -right-32 h-96 w-96 rounded-full blur-3xl hidden dark:block"
+          style={{ background: THEME.dark.brandGlow }}
+        />
+        <div
+          className="absolute top-0 -right-32 h-96 w-96 rounded-full blur-3xl dark:hidden"
           style={{ background: "rgba(15,23,42,0.08)" }}
         />
       </div>
 
-      {/* HERO */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -111,8 +113,10 @@ const HomePage = () => {
             to="/countries"
             className="rounded-full px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
             style={{
-              background: `linear-gradient(135deg, ${BRAND}, rgba(122,30,58,0.55))`,
-              boxShadow: "0 18px 40px rgba(122,30,58,0.25)",
+              background: `linear-gradient(135deg, ${THEME.brand.primary}, rgba(56,189,248,0.95))`,
+              boxShadow: `0 18px 40px ${
+                "rgba(37, 99, 235, 0.25)"
+              }`,
             }}
           >
             Explore Countries →
@@ -124,6 +128,9 @@ const HomePage = () => {
                        text-sm font-semibold text-slate-900 shadow-sm transition
                        hover:bg-white dark:border-white/10 dark:bg-white/[0.04]
                        dark:text-white"
+            style={{
+              boxShadow: "0 10px 30px rgba(2,6,23,0.05)",
+            }}
           >
             View Profile
           </Link>

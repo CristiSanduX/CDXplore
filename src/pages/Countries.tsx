@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { COUNTRIES } from "../data/countries";
+import { THEME } from "../theme";
 
 type ViewMode = "grid" | "list";
 type SortMode = "name-asc" | "name-desc" | "continent-asc";
 
 const STORAGE_KEY = "cdxplore_visited";
-const BRAND = "rgba(122,30,58,0.92)"; 
 
 const CONTINENTS = [
   "Africa",
@@ -154,7 +154,7 @@ export default function Countries() {
   const cardOff =
     "border-slate-200 bg-white dark:border-white/10 dark:bg-white/5";
   const cardOn =
-    "border-transparent bg-white dark:bg-white/10 ring-2 ring-[rgba(122,30,58,0.35)]";
+    "border-transparent bg-white dark:bg-white/10 ring-2";
 
   return (
     <section className="space-y-6">
@@ -200,8 +200,12 @@ export default function Countries() {
               animate={{ width: `${progress}%` }}
               transition={{ type: "spring", stiffness: 700, damping: 55 }}
               style={{
-                background:
-                  "linear-gradient(90deg, rgba(122,30,58,0.35), rgba(122,30,58,0.92), rgba(122,30,58,0.35))",
+                background: `linear-gradient(90deg,
+                  rgba(34,197,94,0.35),
+                  ${THEME.brand.success},
+                  rgba(37,99,235,0.55)
+                )`,
+                boxShadow: `0 12px 30px ${THEME.brand.glow}`,
               }}
             />
           </div>
@@ -217,7 +221,12 @@ export default function Countries() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, code, continent…"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-400 dark:focus:ring-white/10"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition
+                       focus:border-slate-300 focus:ring-4 focus:ring-slate-100
+                       dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-400 dark:focus:ring-white/10"
+            style={{
+              boxShadow: "0 10px 30px rgba(2,6,23,0.05)",
+            }}
           />
         </div>
       </div>
@@ -231,7 +240,7 @@ export default function Countries() {
               type="button"
               onClick={() => setOnlyVisited((v) => !v)}
               className={cn(pillBase, onlyVisited ? pillOn : pillOff)}
-              style={onlyVisited ? { background: BRAND } : undefined}
+              style={onlyVisited ? { background: THEME.brand.primary } : undefined}
             >
               {onlyVisited ? "Showing visited" : "All countries"}
             </button>
@@ -244,7 +253,8 @@ export default function Countries() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortMode)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition hover:bg-slate-50
+                         dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
             >
               <option value="name-asc">Name (A–Z)</option>
               <option value="name-desc">Name (Z–A)</option>
@@ -258,7 +268,7 @@ export default function Countries() {
                 type="button"
                 onClick={() => setView("grid")}
                 className={cn(pillBase, view === "grid" ? pillOn : pillOff)}
-                style={view === "grid" ? { background: BRAND } : undefined}
+                style={view === "grid" ? { background: THEME.brand.primary } : undefined}
               >
                 Grid
               </button>
@@ -266,7 +276,7 @@ export default function Countries() {
                 type="button"
                 onClick={() => setView("list")}
                 className={cn(pillBase, view === "list" ? pillOn : pillOff)}
-                style={view === "list" ? { background: BRAND } : undefined}
+                style={view === "list" ? { background: THEME.brand.primary } : undefined}
               >
                 List
               </button>
@@ -275,41 +285,19 @@ export default function Countries() {
 
           {/* Right */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAllFiltered(true)}
-              className={cn(pillBase, pillOff)}
-            >
+            <button type="button" onClick={() => setAllFiltered(true)} className={cn(pillBase, pillOff)}>
               Mark filtered as visited
             </button>
-            <button
-              type="button"
-              onClick={() => setAllFiltered(false)}
-              className={cn(pillBase, pillOff)}
-            >
+            <button type="button" onClick={() => setAllFiltered(false)} className={cn(pillBase, pillOff)}>
               Unvisit filtered
             </button>
-
-            <button
-              type="button"
-              onClick={markAll}
-              className={cn(pillBase, pillOff)}
-            >
+            <button type="button" onClick={markAll} className={cn(pillBase, pillOff)}>
               Mark all visited
             </button>
-            <button
-              type="button"
-              onClick={clearAll}
-              className={cn(pillBase, pillOff)}
-            >
+            <button type="button" onClick={clearAll} className={cn(pillBase, pillOff)}>
               Clear all
             </button>
-
-            <button
-              type="button"
-              onClick={clearFilters}
-              className={cn(pillBase, pillOff)}
-            >
+            <button type="button" onClick={clearFilters} className={cn(pillBase, pillOff)}>
               Reset
             </button>
           </div>
@@ -329,7 +317,7 @@ export default function Countries() {
                     ? "border-transparent text-white"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                 )}
-                style={on ? { background: BRAND } : undefined}
+                style={on ? { background: THEME.brand.primary } : undefined}
               >
                 {c}
               </button>
@@ -369,8 +357,27 @@ export default function Countries() {
                   onClick={() => toggleVisited(c.code)}
                   whileTap={{ scale: 0.98 }}
                   className={cn(cardBase, isV ? cardOn : cardOff)}
+                  style={
+                    isV
+                      ? {
+                          boxShadow: `0 14px 36px ${THEME.brand.glow}`,
+                          outline: "none",
+                        }
+                      : undefined
+                  }
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div
+                    className={cn(
+                      "absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200 pointer-events-none",
+                      "group-hover:opacity-100"
+                    )}
+                    style={{
+                      background:
+                        "radial-gradient(700px 220px at 20% 0%, rgba(37,99,235,0.10), transparent 55%)",
+                    }}
+                  />
+
+                  <div className="relative flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-950 dark:text-white">
                         {c.name}
@@ -384,7 +391,7 @@ export default function Countries() {
                       {isV && (
                         <span
                           className="rounded-full px-2 py-1 text-[10px] font-bold text-white"
-                          style={{ background: BRAND }}
+                          style={{ background: THEME.brand.success }}
                         >
                           VISITED
                         </span>
@@ -396,12 +403,10 @@ export default function Countries() {
                     </div>
                   </div>
 
-                  {/* hover underline */}
                   <div
-                    className="mt-3 h-[2px] w-full rounded-full opacity-0 transition group-hover:opacity-100"
+                    className="relative mt-3 h-[2px] w-full rounded-full opacity-0 transition group-hover:opacity-100"
                     style={{
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(122,30,58,0.45), transparent)",
+                      background: `linear-gradient(90deg, transparent, ${THEME.brand.primary}, transparent)`,
                     }}
                   />
                 </motion.button>
@@ -437,7 +442,7 @@ export default function Countries() {
                         {isV && (
                           <span
                             className="rounded-full px-2 py-1 text-[10px] font-bold text-white"
-                            style={{ background: BRAND }}
+                            style={{ background: THEME.brand.success }}
                           >
                             VISITED
                           </span>

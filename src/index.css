@@ -11,7 +11,7 @@ body {
 
 body {
   background: #ffffff;
-  color: #0f172a;
+  color: #0f172a; 
   -webkit-font-smoothing: antialiased;
 }
 
@@ -20,6 +20,6 @@ html.dark {
 }
 
 html.dark body {
-  background: #020617;
-  color: #e5e7eb;
+  background: #020617; 
+  color: #e5e7eb;      
 }
