@@ -84,6 +84,7 @@ export const COUNTRIES: Country[] = [
   { code: "KP", name: "North Korea", continent: "Asia" },
   { code: "OM", name: "Oman", continent: "Asia" },
   { code: "PK", name: "Pakistan", continent: "Asia" },
+  { code: "PS", name: "Palestine", continent: "Asia" },
   { code: "PH", name: "Philippines", continent: "Asia" },
   { code: "QA", name: "Qatar", continent: "Asia" },
   { code: "SA", name: "Saudi Arabia", continent: "Asia" },
@@ -114,6 +115,7 @@ export const COUNTRIES: Country[] = [
   { code: "TD", name: "Chad", continent: "Africa" },
   { code: "KM", name: "Comoros", continent: "Africa" },
   { code: "CG", name: "Congo", continent: "Africa" },
+  { code: "CD", name: "Democratic Republic of the Congo", continent: "Africa" },
   { code: "CI", name: "Côte d’Ivoire", continent: "Africa" },
   { code: "DJ", name: "Djibouti", continent: "Africa" },
   { code: "EG", name: "Egypt", continent: "Africa" },
@@ -209,4 +211,5 @@ export const COUNTRIES: Country[] = [
   { code: "SB", name: "Solomon Islands", continent: "Oceania" },
   { code: "TO", name: "Tonga", continent: "Oceania" },
   { code: "TV", name: "Tuvalu", continent: "Oceania" },
+  { code: "VU", name: "Vanuatu", continent: "Oceania" },
 ];
