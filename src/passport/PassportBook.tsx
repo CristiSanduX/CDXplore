@@ -10,6 +10,7 @@ import { EmptyPage } from "./components/EmptyPage";
 
 export function PassportBook({ pages }: { pages: Page[] }) {
   const [i, setI] = useState(0);
+
   const clamp = (n: number) => Math.max(0, Math.min(pages.length - 1, n));
   const next = () => setI((p) => clamp(p + 1));
   const prev = () => setI((p) => clamp(p - 1));
@@ -28,7 +29,9 @@ export function PassportBook({ pages }: { pages: Page[] }) {
 
   return (
     <div className="relative">
-      <div className="relative mx-auto" style={{ perspective: "1600px" }}
+      <div
+        className="relative mx-auto"
+        style={{ perspective: "1600px" }}
         onWheel={(e) => {
           if (wheelLock.current) return;
           wheelLock.current = true;
@@ -37,19 +40,33 @@ export function PassportBook({ pages }: { pages: Page[] }) {
           window.setTimeout(() => (wheelLock.current = false), 320);
         }}
       >
-        <div className="relative mx-auto h-[620px] w-full max-w-[980px]">
-          <div className="pointer-events-none absolute inset-0 rounded-[42px]" style={{ boxShadow: "0 70px 160px rgba(2,6,23,0.20)" }} />
+<div className="relative mx-auto h-[760px] w-full max-w-[540px]">
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[42px]"
+            style={{ boxShadow: "0 70px 160px rgba(2,6,23,0.20)" }}
+          />
 
           <div className="absolute inset-0 overflow-hidden rounded-[42px] border border-slate-200 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/[0.03]">
-            <div className="pointer-events-none absolute left-0 top-0 h-full w-10" style={{ background: "linear-gradient(180deg, rgba(2,6,23,0.12), rgba(2,6,23,0.03))" }} />
-            <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay"
-              style={{ backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 2px, transparent 5px)" }}
+            <div
+              className="pointer-events-none absolute left-0 top-0 h-full w-10"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(2,6,23,0.12), rgba(2,6,23,0.03))",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 2px, transparent 5px)",
+              }}
             />
 
             <div className="absolute inset-0">
               {pages.map((p, idx) => {
                 const turned = idx < i;
                 const z = 200 + (pages.length - idx);
+                const variant = p.kind === "cover" ? "cover" : "page";
 
                 return (
                   <motion.div
@@ -62,23 +79,47 @@ export function PassportBook({ pages }: { pages: Page[] }) {
                       pointerEvents: idx === i ? "auto" : "none",
                     }}
                     animate={{ rotateY: turned ? -180 : 0 }}
-                    transition={{ type: "spring", stiffness: 240, damping: 26, mass: 0.9 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 240,
+                      damping: 26,
+                      mass: 0.9,
+                    }}
                     onClick={(e) => {
-                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const rect = (
+                        e.currentTarget as HTMLDivElement
+                      ).getBoundingClientRect();
                       const x = e.clientX - rect.left;
                       if (x > rect.width * 0.55) next();
                       else prev();
                     }}
                   >
                     {/* FRONT */}
-                    <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-                      <PageShell pageNo={idx + 1} totalPages={pages.length}>
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                      }}
+                    >
+                      <PageShell
+                        pageNo={idx + 1}
+                        totalPages={pages.length}
+                        variant={variant}
+                      >
                         <PageRenderer page={p} />
                       </PageShell>
                     </div>
 
                     {/* BACK */}
-                    <div className="absolute inset-0" style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        transform: "rotateY(180deg)",
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                      }}
+                    >
                       <PageBack />
                     </div>
                   </motion.div>
@@ -87,9 +128,15 @@ export function PassportBook({ pages }: { pages: Page[] }) {
             </div>
 
             <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">← / →</span>
-              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">Scroll</span>
-              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">Click edges</span>
+              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
+                ← / →
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
+                Scroll
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
+                Click edges
+              </span>
             </div>
           </div>
         </div>
@@ -132,7 +179,8 @@ function PageBack() {
       <div
         className="absolute inset-0"
         style={{
-          background: "radial-gradient(900px 360px at 50% 20%, rgba(37,99,235,0.10), transparent 60%)",
+          background:
+            "radial-gradient(900px 360px at 50% 20%, rgba(37,99,235,0.10), transparent 60%)",
           opacity: 0.9,
         }}
       />
