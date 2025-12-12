@@ -6,6 +6,7 @@ import { THEME } from "../theme";
 const tabs = [
   { to: "/", label: "Home" },
   { to: "/countries", label: "Countries" },
+  { to: "/passport", label: "Passport" },
   { to: "/profile", label: "Profile" },
 ] as const;
 
