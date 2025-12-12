@@ -16,6 +16,7 @@ export const COUNTRIES: Country[] = [
   { code: "BG", name: "Bulgaria", continent: "Europe" },
   { code: "HR", name: "Croatia", continent: "Europe" },
   { code: "CZ", name: "Czech Republic", continent: "Europe" },
+  { code: "CY", name: "Cyprus", continent: "Europe" },
   { code: "DK", name: "Denmark", continent: "Europe" },
   { code: "EE", name: "Estonia", continent: "Europe" },
   { code: "FI", name: "Finland", continent: "Europe" },
@@ -52,7 +53,7 @@ export const COUNTRIES: Country[] = [
   { code: "GB", name: "United Kingdom", continent: "Europe" },
   { code: "VA", name: "Vatican City", continent: "Europe" },
 
-  // Asia (49)
+  // Asia (48)
   { code: "AF", name: "Afghanistan", continent: "Asia" },
   { code: "AM", name: "Armenia", continent: "Asia" },
   { code: "AZ", name: "Azerbaijan", continent: "Asia" },
@@ -62,7 +63,6 @@ export const COUNTRIES: Country[] = [
   { code: "BN", name: "Brunei", continent: "Asia" },
   { code: "KH", name: "Cambodia", continent: "Asia" },
   { code: "CN", name: "China", continent: "Asia" },
-  { code: "CY", name: "Cyprus", continent: "Asia" },
   { code: "GE", name: "Georgia", continent: "Asia" },
   { code: "IN", name: "India", continent: "Asia" },
   { code: "ID", name: "Indonesia", continent: "Asia" },

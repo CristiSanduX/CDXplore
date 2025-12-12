@@ -4,8 +4,9 @@ import { COUNTRIES } from "../data/countries";
 import { THEME } from "../theme";
 import { PassportBook } from "../passport/PassportBook";
 import { loadVisited } from "../passport/storage";
-import { chunk } from "../passport/utils";
 import type { Country, Page } from "../passport/types";
+
+const STAMPS_PAGE_SIZE = 6;
 
 export default function PassportPage() {
   const countries = COUNTRIES as Country[];
@@ -28,7 +29,9 @@ export default function PassportPage() {
     return Math.round((visitedCountries.length / total) * 100);
   }, [visitedCountries.length, countries.length]);
 
-  const stampPages = useMemo(() => chunk(visitedCountries, 12), [visitedCountries]);
+  const stampsPageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(visitedCountries.length / STAMPS_PAGE_SIZE));
+  }, [visitedCountries.length]);
 
   const pages: Page[] = useMemo(() => {
     if (visitedCountries.length === 0) {
@@ -37,6 +40,15 @@ export default function PassportPage() {
         { kind: "empty" },
       ];
     }
+
+    const stampPages: Page[] = Array.from({ length: stampsPageCount }).map(
+      (_, idx) => ({
+        kind: "stamps" as const,
+        pageIndex: idx + 1,
+        pageCount: stampsPageCount,
+        stamps: visitedCountries, // ✅ LISTA COMPLETĂ (StampsPage face slice)
+      })
+    );
 
     return [
       {
@@ -53,14 +65,16 @@ export default function PassportPage() {
         progress,
         total: countries.length,
       },
-      ...stampPages.map((stamps, idx) => ({
-        kind: "stamps" as const,
-        pageIndex: idx + 1,
-        pageCount: stampPages.length,
-        stamps,
-      })),
+      ...stampPages,
     ];
-  }, [visitedCountries.length, continentsUnlocked, progress, countries.length, stampPages]);
+  }, [
+    visitedCountries,
+    visitedCountries.length,
+    continentsUnlocked,
+    progress,
+    countries.length,
+    stampsPageCount,
+  ]);
 
   return (
     <div className="relative">

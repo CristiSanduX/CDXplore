@@ -50,12 +50,46 @@ function MoonIcon() {
   );
 }
 
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 export default function Navbar() {
   const { pathname } = useLocation();
+
   const [mode, setMode] = useState<Mode>("light");
   const [hoverTo, setHoverTo] = useState<(typeof tabs)[number]["to"] | null>(
     null
   );
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const activeTo = useMemo(() => {
     const found = tabs.find((t) => isActivePath(pathname, t.to));
@@ -72,6 +106,11 @@ export default function Navbar() {
     document.documentElement.classList.toggle("dark", initial === "dark");
   }, []);
 
+  useEffect(() => {
+    // close mobile menu on route change
+    setMobileOpen(false);
+  }, [pathname]);
+
   const toggleMode = () => {
     const next: Mode = mode === "dark" ? "light" : "dark";
     document.documentElement.classList.toggle("dark", next === "dark");
@@ -82,7 +121,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50">
       <div className="border-b border-slate-200/70 bg-white/75 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+          {/* LEFT — logo */}
           <div className="flex items-center gap-3">
             <motion.div
               whileHover={{ y: -1, scale: 1.03 }}
@@ -118,8 +158,9 @@ export default function Navbar() {
             </div>
           </div>
 
+          {/* CENTER — desktop nav */}
           <nav
-            className="relative flex items-center gap-10"
+            className="relative hidden items-center gap-8 md:flex"
             onMouseLeave={() => setHoverTo(null)}
           >
             {tabs.map((t) => {
@@ -140,6 +181,7 @@ export default function Navbar() {
                       : "text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white",
                   ].join(" ")}
                 >
+                  {/* hover wash (no hardcoded colors) */}
                   <motion.span
                     className="absolute -inset-x-3 -inset-y-2 rounded-xl"
                     initial={false}
@@ -149,8 +191,7 @@ export default function Navbar() {
                     }}
                     transition={{ duration: 0.14 }}
                     style={{
-                      background:
-                        "linear-gradient(180deg, rgba(122,30,58,0.10), rgba(122,30,58,0.00))",
+                      background: `linear-gradient(180deg, ${THEME.brand.glow}, rgba(0,0,0,0))`,
                     }}
                   />
 
@@ -186,51 +227,132 @@ export default function Navbar() {
             })}
           </nav>
 
-          <motion.button
-            type="button"
-            onClick={toggleMode}
-            whileHover={{ y: -1, scale: 1.04 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 750, damping: 45 }}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-            aria-label="Toggle theme"
-            title="Toggle theme"
-          >
-            <span
-              className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition group-hover:opacity-100"
-              style={{
-                boxShadow: `0 0 0 3px rgba(122,30,58,0.10), 0 18px 44px -34px ${THEME.brand.glow}`,
-              }}
-            />
+          {/* RIGHT — actions */}
+          <div className="flex items-center gap-2">
+            {/* mobile menu button */}
+            <motion.button
+              type="button"
+              onClick={() => setMobileOpen((v) => !v)}
+              whileHover={{ y: -1, scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 750, damping: 45 }}
+              className="md:hidden group relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              aria-label="Open menu"
+              title="Menu"
+            >
+              <span
+                className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition group-hover:opacity-100"
+                style={{
+                  boxShadow: `0 0 0 3px rgba(0,0,0,0.02), 0 18px 44px -34px ${THEME.brand.glow}`,
+                }}
+              />
+              <span className="relative text-slate-700 dark:text-slate-200">
+                {mobileOpen ? <XIcon /> : <MenuIcon />}
+              </span>
+            </motion.button>
 
-            <span className="relative text-slate-700 dark:text-slate-200">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {mode === "dark" ? (
-                  <motion.span
-                    key="sun"
-                    initial={{ opacity: 0, rotate: -35, scale: 0.9 }}
-                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                    exit={{ opacity: 0, rotate: 35, scale: 0.9 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    <SunIcon />
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="moon"
-                    initial={{ opacity: 0, rotate: 35, scale: 0.9 }}
-                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                    exit={{ opacity: 0, rotate: -35, scale: 0.9 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    <MoonIcon />
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </span>
-          </motion.button>
+            {/* theme toggle */}
+            <motion.button
+              type="button"
+              onClick={toggleMode}
+              whileHover={{ y: -1, scale: 1.04 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 750, damping: 45 }}
+              className="group relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              aria-label="Toggle theme"
+              title="Toggle theme"
+            >
+              <span
+                className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition group-hover:opacity-100"
+                style={{
+                  boxShadow: `0 0 0 3px rgba(0,0,0,0.02), 0 18px 44px -34px ${THEME.brand.glow}`,
+                }}
+              />
+
+              <span className="relative text-slate-700 dark:text-slate-200">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {mode === "dark" ? (
+                    <motion.span
+                      key="sun"
+                      initial={{ opacity: 0, rotate: -35, scale: 0.9 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 35, scale: 0.9 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <SunIcon />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="moon"
+                      initial={{ opacity: 0, rotate: 35, scale: 0.9 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: -35, scale: 0.9 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <MoonIcon />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
+            </motion.button>
+          </div>
         </div>
 
+        {/* mobile dropdown */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.16 }}
+              className="md:hidden overflow-hidden"
+            >
+              <div className="mx-auto max-w-7xl px-4 pb-3">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="grid gap-1">
+                    {tabs.map((t) => {
+                      const active = t.to === activeTo;
+                      return (
+                        <NavLink
+                          key={t.to}
+                          to={t.to}
+                          end={t.to === "/"}
+                          className={[
+                            "flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold",
+                            active
+                              ? "text-slate-950 dark:text-white"
+                              : "text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white",
+                          ].join(" ")}
+                          style={
+                            active
+                              ? {
+                                  background: `linear-gradient(180deg, ${THEME.brand.glow}, rgba(0,0,0,0))`,
+                                }
+                              : undefined
+                          }
+                        >
+                          <span>{t.label}</span>
+                          {active && (
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{
+                                background: THEME.brand.primary,
+                                boxShadow: `0 14px 30px -18px ${THEME.brand.glow}`,
+                              }}
+                            />
+                          )}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* bottom glow line */}
         <div
           className="h-[2px] w-full"
           style={{
