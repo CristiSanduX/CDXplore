@@ -1,3 +1,3 @@
 export default function Countries() {
-  return null;
+  return <div className="text-black">Countries</div>;
 }

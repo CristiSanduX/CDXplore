@@ -1,9 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
 
 body {
-  background-color: #020617; 
-  color: #e5e7eb;          
+  background: #ffffff;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background: #020617;
+  color: #e5e7eb;
 }

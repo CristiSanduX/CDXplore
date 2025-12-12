@@ -1,16 +1,20 @@
-import './App.css'
+import { Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Countries from "./pages/Countries";
+import Profile from "./pages/Profile";
 
-function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
-      <div className="rounded-3xl border border-white/10 bg-white/5 px-8 py-6 shadow-xl shadow-black/40">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          CDXplore ✈️
-        </h1>
-      </div>
-    </div>
+    <>
+      <Navbar />
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/countries" element={<Countries />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+      </main>
+    </>
   );
 }
-
-
-export default App
