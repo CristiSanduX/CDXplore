@@ -1,61 +1,172 @@
-import { motion } from "framer-motion";
 import { THEME } from "../../theme";
-import { Stat } from "../components/Stat";
-import { pct } from "../utils";
+
+export type SummaryProps = {
+  kind: "summary";
+  issued?: string;
+  visited: number;
+  continents: number;
+  progress: number; // 0..100 sau 0..1
+
+  name?: string;
+  nationality?: string;
+  passportNo?: string;
+};
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
+function formatPassportNo(raw: string) {
+  const cleaned = raw.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  return cleaned || "CDX-000127";
+}
+
+function formatIssued(raw: string) {
+  const s = raw.trim();
+  return s.length > 16 ? s.slice(0, 16) : s;
+}
 
 export function SummaryPage({
+  issued,
   visited,
   continents,
   progress,
-  total,
+  nationality = "ROM",
+  passportNo = "CDX-000127",
+}: SummaryProps) {
+  const brand = THEME?.brand?.primary ?? "rgba(122,30,58,0.92)";
+  const glow = THEME?.brand?.glow ?? "rgba(122,30,58,0.20)";
+
+  const pct = progress <= 1 ? Math.round(progress * 100) : Math.round(progress);
+  const pctClamped = clamp(pct, 0, 100);
+
+  const issuedText = formatIssued(issued ?? "2025-12-12");
+  const passportText = formatPassportNo(passportNo);
+
+  return (
+    <div className="relative h-full w-full">
+      {/* HEADER */}
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold text-slate-500">
+            Identity page
+          </div>
+          <div className="mt-2 text-[28px] font-semibold text-slate-900 leading-tight">
+            CDXplore Passport
+          </div>
+          <div className="mt-1 text-sm text-slate-600">
+            Personal travel record 
+          </div>
+        </div>
+
+        
+      </div>
+
+      {/* MAIN */}
+      <div className="mt-6 grid grid-cols-12 gap-6">
+        {/* PHOTO */}
+        <div className="col-span-5">
+          <div
+            className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl border"
+            style={{
+              borderColor: "rgba(0,0,0,0.10)",
+              background:
+                "linear-gradient(135deg, rgba(15,23,42,0.07), rgba(15,23,42,0.02))",
+            }}
+          >
+            <div
+              className="absolute inset-0 opacity-[0.10]"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(135deg, rgba(15,23,42,0.25) 0px, rgba(15,23,42,0.25) 1px, transparent 1px, transparent 10px)",
+              }}
+            />
+
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="select-none text-5xl font-semibold text-slate-500/20">
+                CDX
+              </div>
+            </div>
+
+            <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-black/10 bg-white/60 px-4 py-3">
+              <div className="text-[11px] font-semibold text-slate-500">
+                Holder photo
+              </div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">
+                (placeholder)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FIELDS */}
+        <div className="col-span-7">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Passport no" value={passportText} mono />
+            <Field label="Nationality" value={nationality} />
+            <Field label="Issued" value={issuedText} mono />
+            <Field label="Authority" value="CDX" />
+            <Field label="Visited" value={`${visited} countries`} />
+            <Field label="Continents" value={String(continents)} />
+          </div>
+
+          {/* Progress */}
+          <div className="mt-5 rounded-3xl border border-black/10 bg-white/60 p-5">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold text-slate-600">
+                World completion
+              </div>
+              <div className="text-sm font-semibold text-slate-900">
+                {pctClamped}%
+              </div>
+            </div>
+
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${pctClamped}%`,
+                  background: `linear-gradient(90deg, ${brand}, rgba(59,130,246,0.55), rgba(16,185,129,0.45))`,
+                  boxShadow: `0 10px 18px ${glow}`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* footer line */}
+      <div className="mt-6 h-px w-full bg-black/5" />
+      <div className="mt-3 text-[11px] text-slate-500">
+        Tip: press ←/→ or scroll to flip pages.
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  mono,
 }: {
-  visited: number;
-  continents: number;
-  progress: number;
-  total: number;
+  label: string;
+  value: string;
+  mono?: boolean;
 }) {
   return (
-    <div className="h-full">
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
-            Summary
-          </p>
-          <h3 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
-            Your travel progress
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-            Next pages contain your stamps.
-          </p>
-        </div>
-        <div className="hidden sm:block text-right text-xs text-slate-500 dark:text-slate-400">
-          Total countries: <span className="font-semibold text-slate-900 dark:text-white">{total}</span>
-        </div>
-      </div>
+    <div className="rounded-3xl border border-black/10 bg-white/60 px-4 py-3">
+      <div className="text-[11px] font-medium text-slate-500">{label}</div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Countries visited" value={visited} sub="From your personal list" />
-        <Stat label="Continents unlocked" value={`${continents} / 6`} sub="One step closer to full coverage" />
-        <Stat label="World explored" value={pct(progress)} sub="Based on total countries list" />
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-          <span>World progress</span>
-          <span>{pct(progress)}</span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-          <motion.div
-            className="h-full rounded-full"
-            initial={false}
-            animate={{ width: `${progress}%` }}
-            transition={{ type: "spring", stiffness: 650, damping: 50 }}
-            style={{
-              background: `linear-gradient(90deg, rgba(34,197,94,0.35), ${THEME.brand.success}, rgba(37,99,235,0.55))`,
-              boxShadow: `0 12px 30px ${THEME.brand.glow}`,
-            }}
-          />
-        </div>
+      <div
+        className={[
+          "mt-1 text-slate-900",
+          mono ? "font-mono tabular-nums" : "font-semibold",
+          "text-[13.5px] leading-tight tracking-tight",
+          "break-words",
+        ].join(" ")}
+        title={value}
+      >
+        {value}
       </div>
     </div>
   );
