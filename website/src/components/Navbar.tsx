@@ -112,6 +112,7 @@ function Avatar({
           src={photoURL}
           alt={name ?? "User"}
           className="h-full w-full object-cover"
+          referrerPolicy="no-referrer" // CHANGED (helps with Google avatars in some cases)
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-sm font-black text-slate-700 dark:text-slate-200">
@@ -132,7 +133,9 @@ function Avatar({
 export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, isReady, logout } = useAuth();
+
+  // CHANGED: also read userPhotoUrl from AuthProvider
+  const { user, userPhotoUrl, isReady, logout } = useAuth();
 
   const [mode, setMode] = useState<Mode>("light");
   const [hoverTo, setHoverTo] = useState<(typeof tabs)[number]["to"] | null>(
@@ -371,7 +374,10 @@ export default function Navbar() {
           {/* RIGHT — actions */}
           <div className="flex items-center gap-2">
             {/* desktop auth */}
-            <div className="hidden md:flex items-center gap-2" data-account-root="1">
+            <div
+              className="hidden md:flex items-center gap-2"
+              data-account-root="1"
+            >
               {!isReady ? null : !user ? (
                 <motion.div whileTap={{ scale: 0.98 }}>
                   <Link
@@ -401,7 +407,8 @@ export default function Navbar() {
                                dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                     title={user.email ?? "Account"}
                   >
-                    <Avatar name={user.displayName} photoURL={user.photoURL} />
+                    {/* CHANGED: use userPhotoUrl */}
+                    <Avatar name={user.displayName} photoURL={userPhotoUrl} />
                     <div className="hidden lg:block text-left leading-tight">
                       <p className="text-xs font-semibold text-slate-900 dark:text-white">
                         {user.displayName ?? "Account"}
@@ -539,7 +546,9 @@ export default function Navbar() {
                     ) : !user ? (
                       <Link
                         to="/auth"
-                        state={{ from: pathname === "/auth" ? "/countries" : pathname }}
+                        state={{
+                          from: pathname === "/auth" ? "/countries" : pathname,
+                        }}
                         className="flex items-center justify-between text-sm font-semibold text-slate-800 dark:text-slate-200"
                       >
                         <span>Sign in</span>

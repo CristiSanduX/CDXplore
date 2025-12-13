@@ -13,20 +13,35 @@ import { auth, googleProvider } from "../lib/firebase";
 type AuthCtx = {
   user: User | null;
 
-  /** True after we resolved the initial auth state (signed in or not). */
+  /** Convenience: resolved initial auth state. */
   isReady: boolean;
 
   /** Convenience alias (same meaning as !isReady). */
   loading: boolean;
 
+  /** Robust avatar url (some providers only populate providerData photoURL reliably). */
+  userPhotoUrl: string | null;
+
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 
-  /** Useful if later you want to force-refresh token / claims. */
+  /** Force-refresh token / claims + reload user profile fields. */
   refreshUser: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
+
+function pickBestPhotoUrl(u: User | null): string | null {
+  if (!u) return null;
+
+  const direct = u.photoURL ?? null;
+  if (direct) return direct;
+
+  const fromProvider =
+    u.providerData?.find((p) => !!p.photoURL)?.photoURL ?? null;
+
+  return fromProvider;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -40,36 +55,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    // Optional: enforce account picker (you already setCustomParameters in firebase.ts; safe either way)
-    // googleProvider.setCustomParameters({ prompt: "select_account" });
+  const refreshUser = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) return;
 
-    await signInWithPopup(auth, googleProvider);
+    // Refresh token (claims / rules changes)
+    await u.getIdToken(true);
+
+    // Ensure profile fields (photoURL, displayName) are up-to-date
+    await u.reload();
+
+    setUser(auth.currentUser);
   }, []);
+
+  const signInWithGoogle = useCallback(async () => {
+    await signInWithPopup(auth, googleProvider);
+
+    // Immediately sync state + ensure photoURL is populated
+    await refreshUser();
+  }, [refreshUser]);
 
   const logout = useCallback(async () => {
     await signOut(auth);
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    const u = auth.currentUser;
-    if (!u) return;
-    // Force refresh token (later useful for Firestore rules/claims changes)
-    await u.getIdToken(true);
-    // Keep state in sync (optional but safe)
-    setUser(auth.currentUser);
-  }, []);
+  const userPhotoUrl = useMemo(() => pickBestPhotoUrl(user), [user]);
 
   const value = useMemo<AuthCtx>(
     () => ({
       user,
       isReady,
       loading: !isReady,
+      userPhotoUrl,
       signInWithGoogle,
       logout,
       refreshUser,
     }),
-    [user, isReady, signInWithGoogle, logout, refreshUser]
+    [user, isReady, userPhotoUrl, signInWithGoogle, logout, refreshUser]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
