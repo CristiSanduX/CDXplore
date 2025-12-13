@@ -7,7 +7,6 @@ import { PageShell } from "./components/PageShell";
 import { CoverPage } from "./components/CoverPage";
 import { SummaryPage } from "./components/SummaryPage";
 import { StampsPage } from "./components/StampsPage";
-import { EmptyPage } from "./components/EmptyPage";
 import { InsideCoverPage } from "./components/InsideCoverPage";
 
 type Spread = {
@@ -148,7 +147,6 @@ function HalfTurn({
         >
           {frontHalf}
 
-          {/* edge highlight */}
           <div
             className="absolute top-0 bottom-0 w-10"
             style={{
@@ -161,7 +159,6 @@ function HalfTurn({
             }}
           />
 
-          {/* shadow grows through turn */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0.14 }}
@@ -176,7 +173,6 @@ function HalfTurn({
             }}
           />
 
-          {/* subtle paper sheen */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0.0 }}
@@ -226,16 +222,25 @@ function HalfTurn({
 export function PassportBook({ pages }: { pages: Page[] }) {
   const [open, setOpen] = useState(false);
 
-  // spread navigation
-  const [displayS, setDisplayS] = useState(0); // base shown now (updates instantly)
+  const [displayS, setDisplayS] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [dir, setDir] = useState<Dir>(1);
   const [flipKey, setFlipKey] = useState(0);
-
-  // snapshot index we are flipping FROM (sheet front)
   const [flipFromS, setFlipFromS] = useState<number | null>(null);
 
   const wheelLock = useRef(false);
+
+  const openRef = useRef(open);
+  const displaySRef = useRef(displayS);
+  const maxSpreadRef = useRef(0);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    displaySRef.current = displayS;
+  }, [displayS]);
 
   const spreads: Spread[] = useMemo(() => {
     const rest = pages.slice(1);
@@ -255,41 +260,53 @@ export function PassportBook({ pages }: { pages: Page[] }) {
   }, [pages]);
 
   const maxSpread = Math.max(0, spreads.length - 1);
-  const clampSpread = (n: number) => Math.max(0, Math.min(maxSpread, n));
+  useEffect(() => {
+    maxSpreadRef.current = maxSpread;
+  }, [maxSpread]);
+
+  const clampSpread = (n: number) =>
+    Math.max(0, Math.min(maxSpreadRef.current, n));
+
+  // ✅ FIX: include the padded blank page in the total page count
+  const effectiveTotalPages = useMemo(() => {
+    const rest = Math.max(0, pages.length - 1);
+    const pad = rest % 2 === 1 ? 1 : 0;
+    return pages.length + pad;
+  }, [pages.length]);
 
   const closeToCover = () => {
+    openRef.current = false;
+    displaySRef.current = 0;
+
     setOpen(false);
     setIsFlipping(false);
     setFlipFromS(null);
     setDisplayS(0);
   };
 
-  /**
-   * ✅ Interruptible paging:
-   * - You can spam ArrowLeft/ArrowRight instantly.
-   * - We update the base instantly, and just restart the sheet animation via flipKey.
-   */
   const startFlipTo = (nextIndex: number, d: Dir) => {
-    if (!open) return;
+    if (!openRef.current) return;
 
+    const current = displaySRef.current;
     const clamped = clampSpread(nextIndex);
-    if (clamped === displayS) return;
+    if (clamped === current) return;
+
+    setFlipFromS(current);
+
+    displaySRef.current = clamped;
+    setDisplayS(clamped);
 
     setDir(d);
 
-    // snapshot what you see right now
-    setFlipFromS(displayS);
-
-    // update base immediately
-    setDisplayS(clamped);
-
-    // force restart animation (interrupt any current flip)
     setIsFlipping(true);
     setFlipKey((k) => k + 1);
   };
 
   const next = () => {
-    if (!open) {
+    if (!openRef.current) {
+      openRef.current = true;
+      displaySRef.current = 0;
+
       setOpen(true);
       setDisplayS(0);
       setIsFlipping(false);
@@ -297,19 +314,18 @@ export function PassportBook({ pages }: { pages: Page[] }) {
       setDir(1);
       return;
     }
-    startFlipTo(displayS + 1, 1);
+    startFlipTo(displaySRef.current + 1, 1);
   };
 
   const prev = () => {
-    if (!open) return;
+    if (!openRef.current) return;
 
-    // back to cover only when not flipping (optional; keeps UX sane)
-    if (displayS === 0) {
+    if (displaySRef.current === 0) {
       closeToCover();
       return;
     }
 
-    startFlipTo(displayS - 1, -1);
+    startFlipTo(displaySRef.current - 1, -1);
   };
 
   useEffect(() => {
@@ -330,10 +346,13 @@ export function PassportBook({ pages }: { pages: Page[] }) {
     window.addEventListener("keydown", onKey, { passive: false });
     return () => window.removeEventListener("keydown", onKey as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, spreads.length, displayS]);
+  }, []);
 
   useEffect(() => {
-    setDisplayS((p) => clampSpread(p));
+    const clamped = clampSpread(displaySRef.current);
+    displaySRef.current = clamped;
+    setDisplayS(clamped);
+
     setFlipFromS((p) => (p == null ? null : clampSpread(p)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spreads.length]);
@@ -378,15 +397,7 @@ export function PassportBook({ pages }: { pages: Page[] }) {
         <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
           ← / →
         </span>
-        <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
-          Scroll
-        </span>
-        <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
-          Click edges
-        </span>
-        <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 dark:border-white/10 dark:bg-white/[0.04]">
-          Esc
-        </span>
+
       </div>
     </>
   );
@@ -404,7 +415,6 @@ export function PassportBook({ pages }: { pages: Page[] }) {
           if (e.deltaY > 10) next();
           if (e.deltaY < -10) prev();
 
-          // faster wheel unlock so you can scroll quickly
           window.setTimeout(() => (wheelLock.current = false), 120);
         }}
       >
@@ -476,7 +486,11 @@ export function PassportBook({ pages }: { pages: Page[] }) {
                             WebkitBackfaceVisibility: "hidden",
                           }}
                         >
-                          <PageShell pageNo={1} totalPages={pages.length} variant="cover">
+                          <PageShell
+                            pageNo={1}
+                            totalPages={effectiveTotalPages}
+                            variant="cover"
+                          >
                             <PageRenderer page={pages[0] ?? { kind: "empty" }} />
                           </PageShell>
                         </div>
@@ -504,14 +518,12 @@ export function PassportBook({ pages }: { pages: Page[] }) {
               <div className="absolute inset-0">
                 {renderSpine()}
 
-                {/* base spread (always clickable, even while flipping) */}
                 <div className="absolute inset-0">
-                  {renderLeftHalf(base, true, pages.length, prev)}
-                  {renderRightHalf(base, true, pages.length, next)}
+                  {renderLeftHalf(base, true, effectiveTotalPages, prev)}
+                  {renderRightHalf(base, true, effectiveTotalPages, next)}
                   {renderHints()}
                 </div>
 
-                {/* sheet animates using snapshot */}
                 {isFlipping && from && (
                   <>
                     {dir === 1 ? (
@@ -519,11 +531,19 @@ export function PassportBook({ pages }: { pages: Page[] }) {
                         <HalfTurn
                           turnKey={flipKey}
                           dir={1}
-                          frontHalf={renderRightHalf(from, false, pages.length, () => {})}
-                          backHalf={renderLeftHalf(base, false, pages.length, () => {})}
+                          frontHalf={renderRightHalf(
+                            from,
+                            false,
+                            effectiveTotalPages,
+                            () => {}
+                          )}
+                          backHalf={renderLeftHalf(
+                            base,
+                            false,
+                            effectiveTotalPages,
+                            () => {}
+                          )}
                           onDone={() => {
-                            // If a newer flip already started, this onDone still fires.
-                            // That's fine: we only clear snapshot/flag; next flip will re-set them.
                             setIsFlipping(false);
                             setFlipFromS(null);
                           }}
@@ -534,8 +554,18 @@ export function PassportBook({ pages }: { pages: Page[] }) {
                         <HalfTurn
                           turnKey={flipKey}
                           dir={-1}
-                          frontHalf={renderLeftHalf(from, false, pages.length, () => {})}
-                          backHalf={renderRightHalf(base, false, pages.length, () => {})}
+                          frontHalf={renderLeftHalf(
+                            from,
+                            false,
+                            effectiveTotalPages,
+                            () => {}
+                          )}
+                          backHalf={renderRightHalf(
+                            base,
+                            false,
+                            effectiveTotalPages,
+                            () => {}
+                          )}
                           onDone={() => {
                             setIsFlipping(false);
                             setFlipFromS(null);
@@ -559,7 +589,6 @@ export function PassportBook({ pages }: { pages: Page[] }) {
         </div>
       </div>
 
-      {/* dots */}
       <div className="mt-6 flex items-center justify-center gap-2">
         {!open ? (
           <button
@@ -580,8 +609,8 @@ export function PassportBook({ pages }: { pages: Page[] }) {
                 key={idx}
                 type="button"
                 onClick={() => {
-                  if (idx === displayS) return;
-                  startFlipTo(idx, idx > displayS ? 1 : -1);
+                  if (idx === displaySRef.current) return;
+                  startFlipTo(idx, idx > displaySRef.current ? 1 : -1);
                 }}
                 className="h-2.5 w-2.5 rounded-full transition"
                 style={{
@@ -598,10 +627,32 @@ export function PassportBook({ pages }: { pages: Page[] }) {
   );
 }
 
+/** Blank paper page (used for padded empty halves) */
+function BlankSheet() {
+  return (
+    <div className="relative h-full w-full">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.55]"
+        style={{
+          background:
+            "radial-gradient(900px 520px at 50% 45%, rgba(15,23,42,0.045), transparent 60%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.10] mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, rgba(15,23,42,0.06) 0px, rgba(15,23,42,0.06) 1px, transparent 3px, transparent 7px)",
+        }}
+      />
+    </div>
+  );
+}
+
 function PageRenderer({ page }: { page: Page }) {
   if (page.kind === "cover") return <CoverPage {...page} />;
   if (page.kind === "inside_cover") return <InsideCoverPage />;
   if (page.kind === "summary") return <SummaryPage {...page} />;
   if (page.kind === "stamps") return <StampsPage {...page} />;
-  return <EmptyPage />;
+  return <BlankSheet />;
 }

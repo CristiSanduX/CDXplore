@@ -42,11 +42,6 @@ export function StampsPage({
             </span>
           </h3>
         </div>
-
-        <p className="mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-          Each stamp carries its own ink, pressure and imperfections — just like
-          in a real passport.
-        </p>
       </div>
 
       <motion.div
