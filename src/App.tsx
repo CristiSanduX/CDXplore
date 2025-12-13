@@ -5,6 +5,8 @@ import HomePage from "./pages/HomePage";
 import Countries from "./pages/Countries";
 import Profile from "./pages/Profile";
 import PassportPage from "./pages/PassportPage";
+import AuthPage from "./pages/AuthPage";
+
 
 export default function App() {
   return (
@@ -19,8 +21,7 @@ export default function App() {
           <Route path="/countries" element={<Countries />} />
           <Route path="/passport" element={<PassportPage />} />
           <Route path="/profile" element={<Profile />} />
-
-          {/* fallback – niciodată blank */}
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
