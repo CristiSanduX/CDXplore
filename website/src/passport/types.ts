@@ -12,6 +12,7 @@ export type Page =
       continents: number;
       progress: number;
     }
+  | { kind: "inside_cover" } // ✅ NEW
   | {
       kind: "summary";
       visited: number;

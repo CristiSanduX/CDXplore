@@ -84,10 +84,15 @@ export default function PassportPage() {
   }, [visitedCountries.length]);
 
   const pages: Page[] = useMemo(() => {
+    // IMPORTANT: structure now expects:
+    // 1) cover
+    // 2) inside_cover (back of cover, faded)
+    // 3) summary (identity)
+    // 4+) stamps pages
     if (loading) {
-      // show something stable while fetching
       return [
         { kind: "cover", issued: "2025", visited: 0, continents: 0, progress: 0 },
+        { kind: "inside_cover" },
         { kind: "empty" },
       ];
     }
@@ -95,6 +100,7 @@ export default function PassportPage() {
     if (visitedCountries.length === 0) {
       return [
         { kind: "cover", issued: "2025", visited: 0, continents: 0, progress: 0 },
+        { kind: "inside_cover" },
         { kind: "empty" },
       ];
     }
@@ -104,7 +110,7 @@ export default function PassportPage() {
         kind: "stamps" as const,
         pageIndex: idx + 1,
         pageCount: stampsPageCount,
-        stamps: visitedCountries, // StampsPage face slice intern
+        stamps: visitedCountries, // StampsPage slices internally
       })
     );
 
@@ -116,6 +122,7 @@ export default function PassportPage() {
         continents: continentsUnlocked,
         progress,
       },
+      { kind: "inside_cover" },
       {
         kind: "summary",
         visited: visitedCountries.length,
