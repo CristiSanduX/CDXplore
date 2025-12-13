@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { COUNTRIES } from "../data/countries";
 import { THEME } from "../theme";
+import { useAuth } from "../auth/AuthProvider";
+
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 type ViewMode = "grid" | "list";
 type SortMode = "name-asc" | "name-desc" | "continent-asc";
@@ -21,7 +25,8 @@ function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function loadVisited(): Set<string> {
+/** Legacy / guest only: used once for first-time migration. */
+function loadVisitedFromLocal(): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return new Set();
@@ -33,11 +38,23 @@ function loadVisited(): Set<string> {
   }
 }
 
-function saveVisited(set: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...set].sort()));
+function normalizeVisited(input: unknown): Set<string> {
+  if (!Array.isArray(input)) return new Set();
+  const out = new Set<string>();
+  for (const v of input) {
+    if (typeof v === "string" && v.length >= 2 && v.length <= 3) out.add(v);
+  }
+  return out;
+}
+
+function toSortedArray(set: Set<string>) {
+  return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 export default function Countries() {
+  const { user, isReady } = useAuth();
+  const uid = user?.uid ?? null;
+
   const [query, setQuery] = useState("");
   const [view, setView] = useState<ViewMode>("grid");
   const [sort, setSort] = useState<SortMode>("name-asc");
@@ -45,11 +62,115 @@ export default function Countries() {
   const [continentFilter, setContinentFilter] = useState<
     Set<(typeof CONTINENTS)[number]>
   >(new Set());
-  const [visited, setVisited] = useState<Set<string>>(() => new Set());
 
+  const [visited, setVisited] = useState<Set<string>>(() => new Set());
+  const [syncState, setSyncState] = useState<
+    "idle" | "loading" | "saving" | "error"
+  >("idle");
+
+  // prevent save loops / avoid saving before initial load
+  const hydratedRef = useRef(false);
+  // debounce timer
+  const saveTimerRef = useRef<number | null>(null);
+
+  // Firestore path: users/{uid}/meta/visited
+  const visitedDocRef = useMemo(() => {
+    if (!uid) return null;
+    return doc(db, "users", uid, "meta", "visited");
+  }, [uid]);
+
+  // 1) Initial hydrate from Firestore (+ optional migration from localStorage)
   useEffect(() => {
-    setVisited(loadVisited());
-  }, []);
+    if (!isReady) return;
+    if (!uid || !visitedDocRef) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setSyncState("loading");
+      try {
+        const snap = await getDoc(visitedDocRef);
+        if (cancelled) return;
+
+        // ✅ MIGRATION ONLY IF DOC DOES NOT EXIST (first time only)
+        if (!snap.exists()) {
+          const local = loadVisitedFromLocal();
+
+          if (local.size > 0) {
+            await setDoc(
+              visitedDocRef,
+              {
+                visited: toSortedArray(local),
+                updatedAt: serverTimestamp(),
+                migratedFromLocal: true,
+              },
+              { merge: true }
+            );
+
+            // IMPORTANT: prevent "ghost re-migration"
+            localStorage.removeItem(STORAGE_KEY);
+
+            if (!cancelled) {
+              setVisited(new Set(local));
+              hydratedRef.current = true;
+              setSyncState("idle");
+            }
+            return;
+          }
+
+          // No local data: start empty
+          if (!cancelled) {
+            setVisited(new Set());
+            hydratedRef.current = true;
+            setSyncState("idle");
+          }
+          return;
+        }
+
+        // ✅ DOC EXISTS => cloud is truth (even if empty)
+        const remote = normalizeVisited(snap.data()?.visited);
+
+        if (!cancelled) {
+          setVisited(new Set(remote));
+          hydratedRef.current = true;
+          setSyncState("idle");
+        }
+      } catch {
+        if (!cancelled) setSyncState("error");
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, uid, visitedDocRef]);
+
+  // 2) Persist visited changes to Firestore (debounced)
+  useEffect(() => {
+    if (!uid || !visitedDocRef) return;
+    if (!hydratedRef.current) return; // don't save until initial load finishes
+
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+
+    saveTimerRef.current = window.setTimeout(async () => {
+      try {
+        setSyncState("saving");
+        await setDoc(
+          visitedDocRef,
+          { visited: toSortedArray(visited), updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+        setSyncState("idle");
+      } catch {
+        setSyncState("error");
+      }
+    }, 350);
+
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [visited, uid, visitedDocRef]);
 
   const visitedCount = visited.size;
 
@@ -95,7 +216,6 @@ export default function Countries() {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
-      saveVisited(next);
       return next;
     });
   };
@@ -107,7 +227,6 @@ export default function Countries() {
         if (value) next.add(c.code);
         else next.delete(c.code);
       });
-      saveVisited(next);
       return next;
     });
   };
@@ -115,13 +234,10 @@ export default function Countries() {
   const markAll = () => {
     const next = new Set(COUNTRIES.map((c) => c.code));
     setVisited(next);
-    saveVisited(next);
   };
 
   const clearAll = () => {
-    const next = new Set<string>();
-    setVisited(next);
-    saveVisited(next);
+    setVisited(new Set<string>());
   };
 
   const clearFilters = () => {
@@ -153,8 +269,7 @@ export default function Countries() {
     "group rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md";
   const cardOff =
     "border-slate-200 bg-white dark:border-white/10 dark:bg-white/5";
-  const cardOn =
-    "border-transparent bg-white dark:bg-white/10 ring-2";
+  const cardOn = "border-transparent bg-white dark:bg-white/10 ring-2";
 
   return (
     <section className="space-y-6">
@@ -165,9 +280,30 @@ export default function Countries() {
             Countries
           </p>
 
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
-            Track your visits
-          </h1>
+          <div className="mt-1 flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+              Track your visits
+            </h1>
+
+            {/* Sync badge */}
+            <span
+              className={cn(
+                "rounded-full border px-2 py-1 text-[10px] font-bold",
+                syncState === "error"
+                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200"
+                  : "border-slate-200 bg-white/70 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+              )}
+              title="Cloud sync status"
+            >
+              {syncState === "loading"
+                ? "SYNCING…"
+                : syncState === "saving"
+                ? "SAVING…"
+                : syncState === "error"
+                ? "SYNC ERROR"
+                : "SYNCED"}
+            </span>
+          </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
             <span>
@@ -224,9 +360,7 @@ export default function Countries() {
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition
                        focus:border-slate-300 focus:ring-4 focus:ring-slate-100
                        dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-400 dark:focus:ring-white/10"
-            style={{
-              boxShadow: "0 10px 30px rgba(2,6,23,0.05)",
-            }}
+            style={{ boxShadow: "0 10px 30px rgba(2,6,23,0.05)" }}
           />
         </div>
       </div>
@@ -285,10 +419,18 @@ export default function Countries() {
 
           {/* Right */}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setAllFiltered(true)} className={cn(pillBase, pillOff)}>
+            <button
+              type="button"
+              onClick={() => setAllFiltered(true)}
+              className={cn(pillBase, pillOff)}
+            >
               Mark filtered as visited
             </button>
-            <button type="button" onClick={() => setAllFiltered(false)} className={cn(pillBase, pillOff)}>
+            <button
+              type="button"
+              onClick={() => setAllFiltered(false)}
+              className={cn(pillBase, pillOff)}
+            >
               Unvisit filtered
             </button>
             <button type="button" onClick={markAll} className={cn(pillBase, pillOff)}>
@@ -359,10 +501,7 @@ export default function Countries() {
                   className={cn(cardBase, isV ? cardOn : cardOff)}
                   style={
                     isV
-                      ? {
-                          boxShadow: `0 14px 36px ${THEME.brand.glow}`,
-                          outline: "none",
-                        }
+                      ? { boxShadow: `0 14px 36px ${THEME.brand.glow}`, outline: "none" }
                       : undefined
                   }
                 >

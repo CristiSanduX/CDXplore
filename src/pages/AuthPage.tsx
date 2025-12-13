@@ -1,9 +1,23 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
 export default function AuthPage() {
   const { user, isReady, signInWithGoogle, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // unde ne întoarcem după login
+  const from =
+    (location.state as { from?: string })?.from ?? "/countries";
+
+  // dacă e deja logat → redirect
+  useEffect(() => {
+    if (isReady && user) {
+      navigate(from, { replace: true });
+    }
+  }, [isReady, user, from, navigate]);
 
   return (
     <section className="mx-auto max-w-3xl px-6 py-16">
@@ -22,11 +36,16 @@ export default function AuthPage() {
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           {!isReady ? (
-            <div className="text-sm text-slate-600 dark:text-slate-300">Loading…</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              Loading…
+            </div>
           ) : !user ? (
             <motion.button
               whileTap={{ scale: 0.98 }}
-              onClick={signInWithGoogle}
+              onClick={async () => {
+                await signInWithGoogle();
+                navigate(from, { replace: true });
+              }}
               className="inline-flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50
                          dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
             >
@@ -38,7 +57,9 @@ export default function AuthPage() {
           ) : (
             <>
               <div className="flex-1 rounded-2xl border border-slate-200 bg-white/70 px-5 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                <div className="font-semibold">{user.displayName ?? "User"}</div>
+                <div className="font-semibold">
+                  {user.displayName ?? "User"}
+                </div>
                 <div className="text-xs opacity-80">{user.email}</div>
               </div>
 

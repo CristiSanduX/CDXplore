@@ -3,16 +3,66 @@ import { Link } from "react-router-dom";
 import { COUNTRIES } from "../data/countries";
 import { THEME } from "../theme";
 import { PassportBook } from "../passport/PassportBook";
-import { loadVisited } from "../passport/storage";
 import type { Country, Page } from "../passport/types";
+
+import { useAuth } from "../auth/AuthProvider";
+import { db } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const STAMPS_PAGE_SIZE = 6;
 
+type CloudMeta = {
+  visited?: string[];
+  updatedAt?: { seconds?: number };
+};
+
+function normalizeVisited(input: unknown): Set<string> {
+  if (!Array.isArray(input)) return new Set();
+  const out = new Set<string>();
+  for (const v of input) {
+    if (typeof v === "string" && v.length >= 2 && v.length <= 3) out.add(v);
+  }
+  return out;
+}
+
 export default function PassportPage() {
+  const { user, isReady } = useAuth();
+  const uid = user?.uid ?? null;
+
   const countries = COUNTRIES as Country[];
   const [visitedSet, setVisitedSet] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => setVisitedSet(loadVisited()), []);
+  useEffect(() => {
+    if (!isReady) return;
+    if (!uid) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const ref = doc(db, "users", uid, "meta", "visited");
+        const snap = await getDoc(ref);
+
+        if (cancelled) return;
+
+        if (snap.exists()) {
+          const data = snap.data() as CloudMeta;
+          setVisitedSet(normalizeVisited(data.visited));
+        } else {
+          setVisitedSet(new Set());
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, uid]);
 
   const visitedCountries = useMemo(
     () => countries.filter((c) => visitedSet.has(c.code)),
@@ -34,6 +84,14 @@ export default function PassportPage() {
   }, [visitedCountries.length]);
 
   const pages: Page[] = useMemo(() => {
+    if (loading) {
+      // show something stable while fetching
+      return [
+        { kind: "cover", issued: "2025", visited: 0, continents: 0, progress: 0 },
+        { kind: "empty" },
+      ];
+    }
+
     if (visitedCountries.length === 0) {
       return [
         { kind: "cover", issued: "2025", visited: 0, continents: 0, progress: 0 },
@@ -46,7 +104,7 @@ export default function PassportPage() {
         kind: "stamps" as const,
         pageIndex: idx + 1,
         pageCount: stampsPageCount,
-        stamps: visitedCountries, // ✅ LISTA COMPLETĂ (StampsPage face slice)
+        stamps: visitedCountries, // StampsPage face slice intern
       })
     );
 
@@ -68,6 +126,7 @@ export default function PassportPage() {
       ...stampPages,
     ];
   }, [
+    loading,
     visitedCountries,
     visitedCountries.length,
     continentsUnlocked,

@@ -1,14 +1,14 @@
-import { NavLink, useLocation, Link } from "react-router-dom";
+import { NavLink, useLocation, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { THEME } from "../theme";
 import { useAuth } from "../auth/AuthProvider";
 
 const tabs = [
-  { to: "/", label: "Home" },
-  { to: "/countries", label: "Countries" },
-  { to: "/passport", label: "Passport" },
-  { to: "/profile", label: "Profile" },
+  { to: "/", label: "Home", protected: false },
+  { to: "/countries", label: "Countries", protected: true },
+  { to: "/passport", label: "Passport", protected: true },
+  { to: "/profile", label: "Profile", protected: true },
 ] as const;
 
 type Mode = "light" | "dark";
@@ -83,13 +83,36 @@ function XIcon() {
   );
 }
 
-function Avatar({ name, photoURL }: { name?: string | null; photoURL?: string | null }) {
+function LockDot() {
+  return (
+    <span
+      className="ml-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-slate-600
+                 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+      title="Sign in required"
+    >
+      <span aria-hidden>🔒</span>
+      Locked
+    </span>
+  );
+}
+
+function Avatar({
+  name,
+  photoURL,
+}: {
+  name?: string | null;
+  photoURL?: string | null;
+}) {
   const letter = (name?.trim()?.[0] ?? "U").toUpperCase();
 
   return (
     <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-white/70 shadow-sm dark:border-white/10 dark:bg-white/5">
       {photoURL ? (
-        <img src={photoURL} alt={name ?? "User"} className="h-full w-full object-cover" />
+        <img
+          src={photoURL}
+          alt={name ?? "User"}
+          className="h-full w-full object-cover"
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-sm font-black text-slate-700 dark:text-slate-200">
           {letter}
@@ -108,12 +131,14 @@ function Avatar({ name, photoURL }: { name?: string | null; photoURL?: string | 
 
 export default function Navbar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { user, isReady, logout } = useAuth();
 
   const [mode, setMode] = useState<Mode>("light");
-  const [hoverTo, setHoverTo] = useState<(typeof tabs)[number]["to"] | null>(null);
+  const [hoverTo, setHoverTo] = useState<(typeof tabs)[number]["to"] | null>(
+    null
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const [accountOpen, setAccountOpen] = useState(false);
 
   const activeTo = useMemo(() => {
@@ -132,7 +157,7 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    // close mobile menu on route change
+    // close menus on route change
     setMobileOpen(false);
     setAccountOpen(false);
   }, [pathname]);
@@ -158,6 +183,18 @@ export default function Navbar() {
 
   const pillBtn =
     "group relative flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10";
+
+  const gotoProtected = (to: string) => {
+    // If not ready, do nothing (prevents weird nav flash)
+    if (!isReady) return;
+
+    if (!user) {
+      navigate("/auth", { state: { from: to }, replace: false });
+      return;
+    }
+
+    navigate(to);
+  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -208,7 +245,71 @@ export default function Navbar() {
               const active = t.to === activeTo;
               const hovered = t.to === hoverTo;
 
-              return (
+              const locked = t.protected && isReady && !user;
+
+              // For protected routes, we use button-like behavior to redirect to /auth with "from"
+              const isProtected = t.protected;
+
+              return isProtected ? (
+                <button
+                  key={t.to}
+                  type="button"
+                  onMouseEnter={() => setHoverTo(t.to)}
+                  onClick={() => gotoProtected(t.to)}
+                  className={[
+                    "relative py-2 text-sm font-semibold tracking-tight",
+                    "transition-colors duration-200",
+                    active
+                      ? "text-slate-950 dark:text-white"
+                      : "text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white",
+                    locked ? "opacity-90" : "",
+                  ].join(" ")}
+                >
+                  <motion.span
+                    className="absolute -inset-x-3 -inset-y-2 rounded-xl"
+                    initial={false}
+                    animate={{
+                      opacity: hovered && !active ? 1 : 0,
+                      scale: hovered && !active ? 1 : 0.985,
+                    }}
+                    transition={{ duration: 0.14 }}
+                    style={{
+                      background: `linear-gradient(180deg, ${THEME.brand.glow}, rgba(0,0,0,0))`,
+                    }}
+                  />
+
+                  <span className="relative inline-flex items-center">
+                    {t.label}
+                    {locked ? <LockDot /> : null}
+                  </span>
+
+                  {active && (
+                    <motion.span
+                      layoutId="nav-active-underline"
+                      className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full"
+                      transition={{ type: "spring", stiffness: 800, damping: 52 }}
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${THEME.brand.primary}, transparent)`,
+                        boxShadow: `0 16px 40px -28px ${THEME.brand.glow}`,
+                      }}
+                    />
+                  )}
+
+                  {!active && hovered && (
+                    <motion.span
+                      className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full"
+                      initial={{ opacity: 0, y: 1 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 1 }}
+                      transition={{ duration: 0.12 }}
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${THEME.brand.primary}, transparent)`,
+                        boxShadow: `0 14px 34px -26px ${THEME.brand.glow}`,
+                      }}
+                    />
+                  )}
+                </button>
+              ) : (
                 <NavLink
                   key={t.to}
                   to={t.to}
@@ -269,12 +370,13 @@ export default function Navbar() {
 
           {/* RIGHT — actions */}
           <div className="flex items-center gap-2">
-            {/* ✅ desktop auth */}
+            {/* desktop auth */}
             <div className="hidden md:flex items-center gap-2" data-account-root="1">
               {!isReady ? null : !user ? (
                 <motion.div whileTap={{ scale: 0.98 }}>
                   <Link
                     to="/auth"
+                    state={{ from: pathname === "/auth" ? "/countries" : pathname }}
                     className="group relative inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 px-3 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-white
                                dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                   >
@@ -355,11 +457,7 @@ export default function Navbar() {
               whileHover={{ y: -1, scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 750, damping: 45 }}
-              className={[
-                "md:hidden",
-                pillBtn,
-                "w-10",
-              ].join(" ")}
+              className={["md:hidden", pillBtn, "w-10"].join(" ")}
               aria-label="Open menu"
               title="Menu"
             >
@@ -433,13 +531,15 @@ export default function Navbar() {
             >
               <div className="mx-auto max-w-7xl px-4 pb-3">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                  {/* ✅ mobile auth row */}
                   <div className="mb-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
                     {!isReady ? (
-                      <p className="text-xs text-slate-600 dark:text-slate-300">Loading…</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Loading…
+                      </p>
                     ) : !user ? (
                       <Link
                         to="/auth"
+                        state={{ from: pathname === "/auth" ? "/countries" : pathname }}
                         className="flex items-center justify-between text-sm font-semibold text-slate-800 dark:text-slate-200"
                       >
                         <span>Sign in</span>
@@ -472,16 +572,32 @@ export default function Navbar() {
                   <div className="grid gap-1">
                     {tabs.map((t) => {
                       const active = t.to === activeTo;
+                      const locked = t.protected && isReady && !user;
+
+                      const onClick = (e: React.MouseEvent) => {
+                        if (!t.protected) return;
+                        if (!isReady) {
+                          e.preventDefault();
+                          return;
+                        }
+                        if (!user) {
+                          e.preventDefault();
+                          navigate("/auth", { state: { from: t.to } });
+                        }
+                      };
+
                       return (
                         <NavLink
                           key={t.to}
                           to={t.to}
                           end={t.to === "/"}
+                          onClick={onClick}
                           className={[
                             "flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold",
                             active
                               ? "text-slate-950 dark:text-white"
                               : "text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white",
+                            locked ? "opacity-95" : "",
                           ].join(" ")}
                           style={
                             active
@@ -491,7 +607,15 @@ export default function Navbar() {
                               : undefined
                           }
                         >
-                          <span>{t.label}</span>
+                          <span className="inline-flex items-center">
+                            {t.label}
+                            {locked ? (
+                              <span className="ml-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                🔒
+                              </span>
+                            ) : null}
+                          </span>
+
                           {active && (
                             <span
                               className="h-2 w-2 rounded-full"
