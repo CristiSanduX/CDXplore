@@ -6,13 +6,14 @@ import {
   useMotionValue,
 } from "framer-motion";
 import { THEME } from "../../theme";
+import { FoilSeal } from "./FoilSeal";
 
 export type CoverProps = {
   kind: "cover";
   issued: string;
   visited: number;
   continents: number;
-  progress: number; 
+  progress: number;
 };
 
 function clamp(n: number, a: number, b: number) {
@@ -39,7 +40,7 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
 
   const glare = useMotionTemplate`
     radial-gradient(
-      700px circle at ${gx}% ${gy}%,
+      720px circle at ${gx}% ${gy}%,
       rgba(255,255,255,${ga}),
       rgba(255,255,255,0) 62%
     )
@@ -48,9 +49,11 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
   const brand = THEME?.brand?.primary ?? "rgba(122,30,58,0.92)";
   const brandGlow = THEME?.brand?.glow ?? "rgba(122,30,58,0.25)";
 
-  const earthGlowA = "rgba(56,189,248,0.22)"; 
-  const earthGlowB = "rgba(34,197,94,0.14)"; 
-  const earthGlowC = "rgba(59,130,246,0.18)"; 
+  // keep “earth” vibe, but more refined
+  const earthA = "rgba(56,189,248,0.20)";
+  const earthB = "rgba(34,197,94,0.12)";
+  const earthC = "rgba(59,130,246,0.14)";
+  const ocean = "rgba(0, 122, 132, 0.20)";
 
   const pct = progress <= 1 ? Math.round(progress * 100) : Math.round(progress);
   const pctClamped = clamp(pct, 0, 100);
@@ -79,6 +82,7 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
 
   return (
     <div className="relative h-full w-full">
+      {/* outer ambient */}
       <div
         className="absolute inset-0"
         style={{
@@ -100,6 +104,7 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
           style={{ transform }}
           className="relative h-full w-full rounded-[28px]"
         >
+          {/* hover shadow */}
           <motion.div
             aria-hidden
             animate={{ y: hover ? -4 : 0 }}
@@ -113,45 +118,71 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
           />
 
           {/* cover body */}
-          <div className="absolute inset-0 rounded-[28px] overflow-hidden border border-black/15 dark:border-white/10">
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,12,22,1),rgba(6,10,18,1),rgba(10,16,26,1))]" />
+          <div className="absolute inset-0 overflow-hidden rounded-[28px] border border-black/15 dark:border-white/10">
+            {/* base leather */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(7,12,22,1), rgba(6,10,18,1), rgba(10,16,26,1))",
+              }}
+            />
 
+            {/* spine hint (left bevel like a real cover) */}
+            <div
+              className="absolute left-0 top-0 h-full w-14 opacity-70"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02), transparent)",
+                mixBlendMode: "overlay",
+              }}
+            />
+            <div
+              className="absolute left-0 top-0 h-full w-14 opacity-65"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.0))",
+              }}
+            />
+
+            {/* earth glow field */}
             <div
               className="absolute inset-0 opacity-90"
               style={{
                 background:
-                  `radial-gradient(900px 520px at 20% 15%, ${earthGlowA}, transparent 60%),` +
-                  `radial-gradient(820px 520px at 85% 35%, ${earthGlowB}, transparent 62%),` +
-                  `radial-gradient(900px 520px at 50% 115%, ${earthGlowC}, transparent 65%)`,
+                  `radial-gradient(900px 520px at 22% 15%, ${earthA}, transparent 60%),` +
+                  `radial-gradient(820px 520px at 85% 35%, ${earthB}, transparent 62%),` +
+                  `radial-gradient(900px 520px at 50% 115%, ${earthC}, transparent 65%),` +
+                  `radial-gradient(520px 260px at 55% 52%, ${ocean}, transparent 70%)`,
               }}
             />
 
-            {/* “globe” watermark – lat/long rings */}
+            {/* globe watermark rings (refined) */}
             <div
               className="absolute inset-0 opacity-[0.10] mix-blend-overlay"
               style={{
                 backgroundImage:
-                  "radial-gradient(circle at 55% 45%, rgba(239, 239, 239, 0.22) 0px, transparent 55%)," +
-                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 120px, rgba(255,255,255,0.09) 121px, transparent 122px)," +
-                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 165px, rgba(255,255,255,0.07) 166px, transparent 167px)," +
-                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 210px, rgba(255,255,255,0.05) 211px, transparent 212px)",
+                  "radial-gradient(circle at 55% 45%, rgba(239, 239, 239, 0.18) 0px, transparent 55%)," +
+                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 122px, rgba(255,255,255,0.09) 123px, transparent 124px)," +
+                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 168px, rgba(255,255,255,0.07) 169px, transparent 170px)," +
+                  "radial-gradient(circle at 55% 45%, transparent 0px, transparent 214px, rgba(255,255,255,0.05) 215px, transparent 216px)",
               }}
             />
 
-            {/* micro grain */}
-            <div
-              className="absolute inset-0 opacity-[0.18] mix-blend-overlay"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 2px, transparent 6px)",
-              }}
-            />
+            {/* leather grain */}
             <div
               className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
               style={{
                 backgroundImage:
                   "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
                 backgroundSize: "3px 3px",
+              }}
+            />
+            <div
+              className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 2px, transparent 7px)",
               }}
             />
 
@@ -166,20 +197,21 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
               style={{ backgroundImage: glare }}
             />
 
-            {/* foil sweep */}
+            {/* foil sweep (more premium) */}
             <motion.div
               aria-hidden
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(75deg, transparent, rgba(255,255,255,0.14), transparent)",
+                  "linear-gradient(75deg, transparent, rgba(255,255,255,0.12), transparent)",
                 mixBlendMode: "screen",
-                opacity: hover ? 0.65 : 0.24,
+                opacity: hover ? 0.58 : 0.22,
               }}
-              animate={{ x: hover ? "140%" : "-40%" }}
+              animate={{ x: hover ? "150%" : "-45%" }}
               transition={{ duration: hover ? 0.95 : 0.75, ease: "easeOut" }}
             />
 
+            {/* center brand glow */}
             <div
               className="absolute left-0 right-0 top-[46%] h-24 pointer-events-none"
               style={{
@@ -193,47 +225,80 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
 
             {/* content */}
             <div className="relative z-10 h-full p-7 flex flex-col">
-              {/* header */}
+              {/* header row */}
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold tracking-[0.34em] text-white/75">
+                  <div className="text-[11px] font-semibold tracking-[0.38em] text-white/75">
                     CDXPLORE
                   </div>
-                  <div className="mt-1 text-[12px] tracking-[0.22em] text-white/60 uppercase">
+                  <div className="mt-1 text-[12px] tracking-[0.24em] text-white/60 uppercase">
                     Travel passport
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/[0.04] px-3 py-2">
-                  <div className="text-[10px] tracking-[0.28em] text-white/70">NFC</div>
-                  <div className="mt-1 h-3 w-8 rounded-md border border-white/20" />
+                <div className="flex items-start gap-3">
+                  {/* seal */}
+                  <div className="hidden sm:block">
+                    <FoilSeal title="CDX" subtitle="AUTH" />
+                  </div>
+
+                  {/* NFC chip */}
+                  <div className="rounded-2xl border border-white/15 bg-white/[0.04] px-3 py-2">
+                    <div className="text-[10px] tracking-[0.28em] text-white/70">
+                      NFC
+                    </div>
+                    <div className="mt-1 h-3 w-8 rounded-md border border-white/20" />
+                  </div>
                 </div>
               </div>
 
-              {/* center */}
+              {/* center hero */}
               <div className="flex-1 flex flex-col items-center justify-center">
-                <div className="text-[12px] tracking-[0.42em] uppercase text-white/70">
+                <div className="text-[12px] tracking-[0.46em] uppercase text-white/70">
                   Passport
                 </div>
 
-                <div className="mt-2 text-[30px] font-semibold text-white/95 tracking-tight">
-                  ROMÂNIA
+                {/* Embossed Title */}
+                <div className="relative mt-2">
+                  <div
+                    className="absolute inset-0 blur-[1px]"
+                    style={{ color: "rgba(0,0,0,0.55)" }}
+                  >
+                    <span className="text-[32px] font-semibold tracking-tight">
+                      CDXplore
+                    </span>
+                  </div>
+
+                  <span
+                    className="text-[32px] font-semibold tracking-tight"
+                    style={{
+                      color: "rgba(255,255,255,0.92)",
+                      textShadow:
+                        "0 1px 0 rgba(255,255,255,0.08), 0 -1px 0 rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    CDXplore
+                  </span>
                 </div>
 
-                {/* foil line (brand) */}
+                <div className="mt-2 text-[12px] tracking-[0.38em] uppercase text-white/55">
+                  Global travel record
+                </div>
+
+                {/* foil line */}
                 <div
-                  className="mt-4 h-[2px] w-44 rounded-full"
+                  className="mt-5 h-[2px] w-44 rounded-full"
                   style={{
                     background: `linear-gradient(90deg, transparent, ${brand}, transparent)`,
                     boxShadow: `0 10px 35px ${brandGlow}`,
-                    opacity: 0.9,
+                    opacity: 0.95,
                   }}
                 />
 
                 {/* progress card */}
-                <div className="mt-8 w-full max-w-[420px] rounded-2xl border border-white/12 bg-white/[0.035] p-5">
+                <div className="mt-8 w-full max-w-[430px] rounded-2xl border border-white/12 bg-white/[0.035] p-5 backdrop-blur">
                   <div className="flex items-center justify-between">
-                    <div className="text-[10px] tracking-[0.28em] text-white/60 uppercase">
+                    <div className="text-[10px] tracking-[0.32em] text-white/55 uppercase">
                       Progress
                     </div>
                     <div className="text-[12px] font-semibold text-white/85">
@@ -241,43 +306,30 @@ export function CoverPage({ issued, visited, continents, progress }: CoverProps)
                     </div>
                   </div>
 
+                  {/* bar */}
                   <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
                         width: `${pctClamped}%`,
-                        background:
-                          "linear-gradient(90deg, rgba(56,189,248,0.95), rgba(59,130,246,0.75), rgba(255,255,255,0.20))",
-                        boxShadow: "0 12px 26px rgba(56,189,248,0.18)",
+                        background: `linear-gradient(90deg, ${brand}, rgba(0,122,132,0.75), rgba(255,255,255,0.20))`,
+                        boxShadow: `0 12px 26px ${brandGlow}`,
                       }}
                     />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="mt-4 grid grid-cols-3 gap-1">
                     <Stat label="Visited" value={String(visited)} />
                     <Stat label="Continents" value={String(continents)} />
                     <Stat label="Issued" value={issued} />
                   </div>
+
+                 
                 </div>
               </div>
 
-              <motion.div
-                className="mt-auto flex items-center justify-between rounded-2xl border border-white/12 bg-white/[0.035] p-4"
-                animate={{ y: hover ? -1 : 0 }}
-                transition={{ type: "spring", stiffness: 250, damping: 18 }}
-                style={{
-                  boxShadow: hover
-                    ? "0 18px 45px rgba(59,130,246,0.12)"
-                    : "none",
-                }}
-              >
-                <div className="text-[10px] uppercase tracking-[0.32em] text-white/60">
-                  Verified
-                </div>
-                <div className="text-[11px] font-semibold text-white/80">
-                  CDX Authority
-                </div>
-              </motion.div>
+              
+              
             </div>
           </div>
         </motion.div>
