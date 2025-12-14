@@ -44,26 +44,32 @@ export function SummaryPage({
   const passportText = formatPassportNo(passportNo);
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      className={[
+        "relative h-full w-full",
+        // ✅ overall text a bit smaller on mobile + tighter
+        "text-[12px] sm:text-[14px] leading-[1.25] sm:leading-[1.35]",
+      ].join(" ")}
+    >
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-6">
+      <div className="flex items-start justify-between gap-4 sm:gap-6">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold text-slate-500">
+          <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-[-0.01em]">
             Identity page
           </div>
-          <div className="mt-2 text-[28px] font-semibold text-slate-900 leading-tight">
+
+          <div className="mt-2 text-[20px] sm:text-[28px] font-semibold text-slate-900 leading-tight tracking-[-0.02em]">
             CDXplore Passport
           </div>
-          <div className="mt-1 text-sm text-slate-600">
-            Personal travel record 
+
+          <div className="mt-1 text-[12px] sm:text-sm text-slate-600 tracking-[-0.01em]">
+            Personal travel record
           </div>
         </div>
-
-        
       </div>
 
       {/* MAIN */}
-      <div className="mt-6 grid grid-cols-12 gap-6">
+      <div className="mt-5 sm:mt-6 grid grid-cols-12 gap-4 sm:gap-6">
         {/* PHOTO */}
         <div className="col-span-5">
           <div
@@ -83,16 +89,16 @@ export function SummaryPage({
             />
 
             <div className="absolute inset-0 grid place-items-center">
-              <div className="select-none text-5xl font-semibold text-slate-500/20">
+              <div className="select-none text-4xl sm:text-5xl font-semibold text-slate-500/20 tracking-[-0.03em]">
                 CDX
               </div>
             </div>
 
-            <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-black/10 bg-white/60 px-4 py-3">
-              <div className="text-[11px] font-semibold text-slate-500">
+            <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 rounded-2xl border border-black/10 bg-white/60 px-3 py-2 sm:px-4 sm:py-3">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-[-0.01em]">
                 Holder photo
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">
+              <div className="mt-1 text-[12px] sm:text-sm font-semibold text-slate-900 tracking-[-0.01em]">
                 (placeholder)
               </div>
             </div>
@@ -101,7 +107,7 @@ export function SummaryPage({
 
         {/* FIELDS */}
         <div className="col-span-7">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <Field label="Passport no" value={passportText} mono />
             <Field label="Nationality" value={nationality} />
             <Field label="Issued" value={issuedText} mono />
@@ -111,12 +117,12 @@ export function SummaryPage({
           </div>
 
           {/* Progress */}
-          <div className="mt-5 rounded-3xl border border-black/10 bg-white/60 p-5">
+          <div className="mt-4 sm:mt-5 rounded-3xl border border-black/10 bg-white/60 p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold text-slate-600">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-600 tracking-[-0.01em]">
                 World completion
               </div>
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-[12px] sm:text-sm font-semibold text-slate-900 tracking-[-0.01em] tabular-nums">
                 {pctClamped}%
               </div>
             </div>
@@ -136,8 +142,8 @@ export function SummaryPage({
       </div>
 
       {/* footer line */}
-      <div className="mt-6 h-px w-full bg-black/5" />
-      <div className="mt-3 text-[11px] text-slate-500">
+      <div className="mt-5 sm:mt-6 h-px w-full bg-black/5" />
+      <div className="mt-3 text-[10px] sm:text-[11px] text-slate-500 tracking-[-0.01em]">
         Tip: press ←/→ or scroll to flip pages.
       </div>
     </div>
@@ -154,14 +160,18 @@ function Field({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-3xl border border-black/10 bg-white/60 px-4 py-3">
-      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+    <div className="rounded-3xl border border-black/10 bg-white/60 px-3 py-2 sm:px-4 sm:py-3">
+      <div className="text-[10px] sm:text-[11px] font-medium text-slate-500 tracking-[-0.01em]">
+        {label}
+      </div>
 
       <div
         className={[
           "mt-1 text-slate-900",
           mono ? "font-mono tabular-nums" : "font-semibold",
-          "text-[13.5px] leading-tight tracking-tight",
+          // ✅ smaller on mobile + tighter tracking so it doesn't feel spaced out
+          "text-[12px] sm:text-[13.5px] leading-tight",
+          "tracking-[-0.02em] sm:tracking-tight",
           "break-words",
         ].join(" ")}
         title={value}

@@ -1,8 +1,5 @@
-import { motion } from "framer-motion";
-import { THEME } from "../../theme";
 
 export function InsideCoverPage() {
-  const brand = THEME?.brand?.primary ?? "rgba(122,30,58,0.92)";
 
   return (
 
