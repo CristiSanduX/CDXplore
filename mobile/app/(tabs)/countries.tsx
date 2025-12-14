@@ -8,7 +8,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { COUNTRIES, type Country } from "../../src/data/countries";
-import { loadVisited, saveVisited } from "../../src/visited/visitedStore";
+import {
+  loadVisited,
+  saveVisited,
+  subscribeVisited,
+} from "../../src/visited/visitedStore";
 
 type Row = Country;
 
@@ -18,30 +22,45 @@ export default function CountriesScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let alive = true;
+    let unsubscribe = () => {};
+
     (async () => {
-      try {
-        const v = await loadVisited();
-        if (alive) setVisited(v);
-      } finally {
-        if (alive) setLoading(false);
-      }
+      setLoading(true);
+
+      // initial load
+      const initial = await loadVisited();
+      setVisited(initial);
+      setLoading(false);
+
+      // realtime sync (web ↔ mobile)
+      unsubscribe = subscribeVisited((v) => {
+        setVisited(v);
+      });
     })();
-    return () => {
-      alive = false;
-    };
+
+    return () => unsubscribe();
   }, []);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return COUNTRIES;
-    return COUNTRIES.filter(
-      (c) =>
-        c.name.toLowerCase().includes(s) ||
-        c.code.toLowerCase().includes(s) ||
-        c.continent.toLowerCase().includes(s)
-    );
-  }, [q]);
+
+    const base = !s
+      ? COUNTRIES
+      : COUNTRIES.filter(
+          (c) =>
+            c.name.toLowerCase().includes(s) ||
+            c.code.toLowerCase().includes(s) ||
+            c.continent.toLowerCase().includes(s)
+        );
+
+    // visited first (nice UX)
+    return [...base].sort((a, b) => {
+      const av = visited.has(a.code) ? 0 : 1;
+      const bv = visited.has(b.code) ? 0 : 1;
+      if (av !== bv) return av - bv;
+      return a.name.localeCompare(b.name);
+    });
+  }, [q, visited]);
 
   const visitedCount = visited.size;
 
@@ -51,7 +70,7 @@ export default function CountriesScreen() {
       if (next.has(code)) next.delete(code);
       else next.add(code);
 
-      // fire & forget save
+      // save async
       saveVisited(next).catch(console.log);
       return next;
     });
@@ -66,6 +85,7 @@ export default function CountriesScreen() {
           padding: 14,
           borderRadius: 16,
           borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.10)",
           marginBottom: 10,
           backgroundColor: isOn ? "rgba(34,197,94,0.12)" : "transparent",
         }}
@@ -89,9 +109,11 @@ export default function CountriesScreen() {
               height: 28,
               borderRadius: 14,
               borderWidth: 1,
+              borderColor: "rgba(0,0,0,0.18)",
               alignItems: "center",
               justifyContent: "center",
               opacity: isOn ? 1 : 0.45,
+              backgroundColor: isOn ? "rgba(34,197,94,0.18)" : "transparent",
             }}
           >
             <Text style={{ fontWeight: "900" }}>{isOn ? "✓" : ""}</Text>
@@ -121,13 +143,16 @@ export default function CountriesScreen() {
           height: 48,
           borderRadius: 14,
           borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.12)",
           paddingHorizontal: 14,
           marginBottom: 14,
         }}
       />
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator />
           <Text style={{ marginTop: 10, opacity: 0.7 }}>Loading…</Text>
         </View>
