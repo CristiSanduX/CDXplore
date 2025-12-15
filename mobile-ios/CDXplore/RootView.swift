@@ -9,7 +9,17 @@
 import SwiftUI
 
 struct RootView: View {
+    @StateObject private var auth = AuthViewModel()
+
     var body: some View {
-        MainTabsView()
+        Group {
+            if auth.user != nil {
+                MainTabsView()
+                    .environmentObject(auth)
+            } else {
+                AuthView()
+                    .environmentObject(auth)
+            }
+        }
     }
 }

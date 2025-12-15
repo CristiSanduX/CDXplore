@@ -7,13 +7,24 @@
 
 
 import SwiftUI
+import FirebaseAuth
 
 struct ProfileView: View {
+    @EnvironmentObject var auth: AuthViewModel
+
     var body: some View {
         NavigationStack {
-            Text("Profile (coming next)")
-                .padding()
-                .navigationTitle("Profile")
+            VStack(spacing: 12) {
+                if let u = auth.user {
+                    Text(u.email ?? "Logged in").foregroundStyle(.secondary)
+                }
+                Button("Sign out") {
+                    auth.signOut()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+            .navigationTitle("Profile")
         }
     }
 }

@@ -12,8 +12,9 @@ dist
 dist-ssr
 *.local
 .env
-# Firebase iOS config
-mobile/GoogleService-Info.plist
+
+# Firebase
+**/GoogleService-Info.plist
 
 # Editor directories and files
 .vscode/*
