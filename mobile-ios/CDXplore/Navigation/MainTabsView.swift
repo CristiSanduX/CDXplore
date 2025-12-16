@@ -16,6 +16,11 @@ struct MainTabsView: View {
 
             CountriesView()
                 .tabItem { Label("Countries", systemImage: "globe.europe.africa.fill") }
+            
+            PassportView()
+                .tabItem {
+                    Label("Passport", systemImage: "book.closed")
+                }
 
             ProfileView()
                 .tabItem { Label("Profile", systemImage: "person.fill") }
