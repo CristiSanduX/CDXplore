@@ -16,14 +16,13 @@ struct MainTabsView: View {
 
             CountriesView()
                 .tabItem { Label("Countries", systemImage: "globe.europe.africa.fill") }
-            
+
             PassportView()
-                .tabItem {
-                    Label("Passport", systemImage: "book.closed")
-                }
+                .tabItem { Label("Passport", systemImage: "book.closed") }
 
             ProfileView()
                 .tabItem { Label("Profile", systemImage: "person.fill") }
         }
+        .tint(Color(red: 0.48, green: 0.12, blue: 0.23)) 
     }
 }
