@@ -6,6 +6,8 @@ import Countries from "./pages/Countries";
 import Profile from "./pages/Profile";
 import PassportPage from "./pages/PassportPage";
 import AuthPage from "./pages/AuthPage";
+import ShopPage from "./pages/ShopPage";
+
 
 import RequireAuth from "./auth/RequireAuth";
 
@@ -21,6 +23,8 @@ export default function App() {
           {/* Public */}
           <Route path="/" element={<HomePage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/shop" element={<ShopPage />} />
+
 
           {/* Protected */}
           <Route

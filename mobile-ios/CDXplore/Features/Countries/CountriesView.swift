@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct CountriesView: View {
 
@@ -32,6 +33,9 @@ struct CountriesView: View {
         "Oceania"
     ]
 
+    // brand burgundy
+    private let ink = Color(red: 0.48, green: 0.12, blue: 0.23)
+
     @State private var query = ""
     @State private var visitedOnly = false
     @State private var viewMode: ViewMode = .grid
@@ -44,19 +48,21 @@ struct CountriesView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 14) {
-                header
-                controls
-                continentStats
-                content
+            GeometryReader { geo in
+                VStack(spacing: 14) {
+                    header
+                    controls
+                    continentStats
+                    content(width: geo.size.width)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .navigationTitle("Countries")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { toolbarMenu }
+                .onAppear { store.start() }
+                .onDisappear { store.stop() }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .navigationTitle("Countries")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarMenu }
-            .onAppear { store.start() }
-            .onDisappear { store.stop() }
         }
     }
 
@@ -64,27 +70,27 @@ struct CountriesView: View {
 
     private var header: some View {
         let total = countries.count
-        let visited = store.visited.count
-        let progress = total == 0 ? 0.0 : Double(visited) / Double(total)
+        let visitedCount = store.visited.count
+        let progress = total == 0 ? 0.0 : Double(visitedCount) / Double(total)
 
         return VStack(alignment: .leading, spacing: 10) {
             Text("Your passport, but interactive.")
                 .font(.system(size: 22, weight: .bold))
 
             HStack(alignment: .center, spacing: 10) {
-                Text("\(visited) visited • \(total) total")
+                Text("\(visitedCount) visited • \(total) total")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                Text("\(Int(progress * 100))%")
+                Text("\(Int((progress * 100).rounded()))%")
                     .font(.system(size: 12, weight: .heavy))
                     .foregroundStyle(.secondary)
             }
 
             ProgressView(value: progress)
-                .tint(Color.black.opacity(0.8))
+                .tint(ink.opacity(0.85))
                 .scaleEffect(x: 1, y: 1.2, anchor: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,6 +110,7 @@ struct CountriesView: View {
                 TextField("Search countries…", text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .submitLabel(.search)
 
                 if !query.isEmpty {
                     Button { query = "" } label: {
@@ -185,31 +192,34 @@ struct CountriesView: View {
                         withAnimation(.easeInOut(duration: 0.18)) {
                             selectedContinent = (selectedContinent == cont) ? "All" : cont
                         }
+                        lightHaptic()
                     }
                 }
             }
             .padding(.vertical, 2)
         }
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private func continentCount(_ continent: String) -> (visited: Int, total: Int) {
         let list = countries.filter { $0.continent == continent }
         let total = list.count
-        let visited = list.reduce(0) { $0 + (store.visited.contains($1.code) ? 1 : 0) }
+        let visited = list.reduce(0) { $0 + (store.visited.contains($1.code.uppercased()) ? 1 : 0) }
         return (visited, total)
     }
 
     // MARK: - Content
 
-    private var content: some View {
+    private func content(width: CGFloat) -> some View {
         let data = filteredAndSorted
 
         return Group {
             if data.isEmpty {
                 CountriesEmptyState()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 if viewMode == .grid {
-                    grid(data)
+                    grid(data, width: width)
                 } else {
                     list(data)
                 }
@@ -220,23 +230,25 @@ struct CountriesView: View {
         .animation(.easeInOut(duration: 0.2), value: sortMode)
         .animation(.easeInOut(duration: 0.2), value: viewMode)
         .animation(.easeInOut(duration: 0.2), value: selectedContinent)
+        .scrollDismissesKeyboard(.immediately)
     }
 
-    private func grid(_ data: [Country]) -> some View {
-        let cols = [
-            GridItem(.flexible(), spacing: 12),
-            GridItem(.flexible(), spacing: 12)
-        ]
+    private func grid(_ data: [Country], width: CGFloat) -> some View {
+        // Adaptive columns:
+        // - smaller iPhones: 2 cols
+        // - wider screens: 3 cols (optional, feels premium)
+        let columnsCount = width >= 430 ? 3 : 2
+        let cols = Array(repeating: GridItem(.flexible(), spacing: 12), count: columnsCount)
 
         return ScrollView {
             LazyVGrid(columns: cols, spacing: 12) {
                 ForEach(data) { c in
                     CountryCard(
                         country: c,
-                        isVisited: store.visited.contains(c.code),
+                        isVisited: store.visited.contains(c.code.uppercased()),
                         onToggle: {
                             store.toggle(c.code)
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            lightHaptic()
                         }
                     )
                 }
@@ -251,10 +263,10 @@ struct CountriesView: View {
                 ForEach(data) { c in
                     CountryRow(
                         country: c,
-                        isVisited: store.visited.contains(c.code),
+                        isVisited: store.visited.contains(c.code.uppercased()),
                         onToggle: {
                             store.toggle(c.code)
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            lightHaptic()
                         }
                     )
                 }
@@ -287,15 +299,15 @@ struct CountriesView: View {
 
         // visited only
         if visitedOnly {
-            data = data.filter { visited.contains($0.code) }
+            data = data.filter { visited.contains($0.code.uppercased()) }
         }
 
         // sort
         switch sortMode {
         case .visitedFirst:
             data.sort { a, b in
-                let av = visited.contains(a.code)
-                let bv = visited.contains(b.code)
+                let av = visited.contains(a.code.uppercased())
+                let bv = visited.contains(b.code.uppercased())
                 if av != bv { return av && !bv }
                 return a.name < b.name
             }
@@ -314,13 +326,13 @@ struct CountriesView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button {
-                    Task { markAllVisibleVisited() }
+                    markAllVisibleVisited()
                 } label: {
                     Label("Mark all visible visited", systemImage: "checkmark.circle")
                 }
 
                 Button(role: .destructive) {
-                    Task { clearAllVisibleVisited() }
+                    clearAllVisibleVisited()
                 } label: {
                     Label("Clear visible visited", systemImage: "xmark.circle")
                 }
@@ -331,25 +343,41 @@ struct CountriesView: View {
     }
 
     private func markAllVisibleVisited() {
-        let visible = filteredAndSorted.map { $0.code }
+        let visible = filteredAndSorted.map { $0.code.uppercased() }
         guard !visible.isEmpty else { return }
+
         visible.forEach { code in
             if !store.visited.contains(code) {
                 store.toggle(code)
             }
         }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        mediumHaptic()
     }
 
     private func clearAllVisibleVisited() {
-        let visible = filteredAndSorted.map { $0.code }
+        let visible = filteredAndSorted.map { $0.code.uppercased() }
         guard !visible.isEmpty else { return }
+
         visible.forEach { code in
             if store.visited.contains(code) {
                 store.toggle(code)
             }
         }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        mediumHaptic()
+    }
+
+    // MARK: - Haptics
+
+    private func lightHaptic() {
+        let gen = UIImpactFeedbackGenerator(style: .light)
+        gen.prepare()
+        gen.impactOccurred(intensity: 0.8)
+    }
+
+    private func mediumHaptic() {
+        let gen = UIImpactFeedbackGenerator(style: .medium)
+        gen.prepare()
+        gen.impactOccurred(intensity: 0.9)
     }
 }
 
@@ -391,3 +419,5 @@ private struct ContinentChip: View {
 #Preview {
     CountriesView()
 }
+
+

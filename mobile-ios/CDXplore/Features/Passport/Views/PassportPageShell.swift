@@ -5,7 +5,6 @@
 //  Created by Cristi Sandu on 17.12.2025.
 //
 
-
 import SwiftUI
 
 struct PassportPageShell<Content: View>: View {
@@ -19,9 +18,8 @@ struct PassportPageShell<Content: View>: View {
                 .tracking(0.4)
 
             content
-
-            Spacer(minLength: 0)
         }
+        // keep the page pinned to top, without pushing content down/up unexpectedly
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

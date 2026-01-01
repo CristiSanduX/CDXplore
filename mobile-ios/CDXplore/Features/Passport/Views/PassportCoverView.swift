@@ -5,7 +5,6 @@
 //  Created by Cristi Sandu on 16.12.2025.
 //
 
-
 import SwiftUI
 
 struct PassportCoverView: View {
@@ -20,6 +19,8 @@ struct PassportCoverView: View {
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
+            let w = max(size.width, 1)
+            let h = max(size.height, 1)
 
             ZStack {
                 Color.clear
@@ -44,10 +45,8 @@ struct PassportCoverView: View {
                                 .mask(RoundedRectangle(cornerRadius: 26, style: .continuous))
                         )
                 }
-                .frame(
-                    width: min(size.width * 0.92, 420),
-                    height: min(size.height * 0.92, 620)
-                )
+                // ✅ FULLSCREEN: ia exact mărimea primită (nu mai “micșora” singur la 420/620)
+                .frame(width: w, height: h)
                 .shadow(color: .black.opacity(isPressed ? 0.25 : 0.34),
                         radius: isPressed ? 18 : 26,
                         x: 0, y: isPressed ? 10 : 18)
@@ -162,6 +161,10 @@ struct PassportCoverView: View {
             endPoint: .bottomTrailing
         )
 
+        // ✅ scale position with size instead of clamping to 300/220
+        let x = size.width * 0.70
+        let y = size.height * 0.33
+
         return ZStack {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(gold)
@@ -182,12 +185,16 @@ struct PassportCoverView: View {
             .stroke(Color.black.opacity(0.18), style: StrokeStyle(lineWidth: 2, lineCap: .round))
         }
         .frame(width: chipW, height: chipH)
-        .position(x: min(size.width * 0.70, 300), y: min(size.height * 0.35, 220))
+        .position(x: x, y: y)
         .opacity(0.9)
     }
 
     private func coverContent(size: CGSize) -> some View {
         let gold = Color(red: 0.93, green: 0.83, blue: 0.50)
+
+        // ✅ make typography scale slightly with height (keeps it premium on small phones & big pages)
+        let titleSize = max(28, min(40, size.height * 0.06))
+        let globeSize = max(38, min(54, size.height * 0.075))
 
         return VStack(spacing: 12) {
             Spacer(minLength: 18)
@@ -198,7 +205,7 @@ struct PassportCoverView: View {
                 .foregroundStyle(gold.opacity(0.86))
 
             Text(title)
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: titleSize, weight: .heavy, design: .rounded))
                 .tracking(1.2)
                 .foregroundStyle(gold)
                 .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 10)
@@ -210,7 +217,7 @@ struct PassportCoverView: View {
                     .frame(width: 110, height: 110)
 
                 Image(systemName: "globe.europe.africa.fill")
-                    .font(.system(size: 44, weight: .bold))
+                    .font(.system(size: globeSize, weight: .bold))
                     .foregroundStyle(gold.opacity(0.92))
             }
             .padding(.top, 6)
@@ -235,8 +242,9 @@ struct PassportCoverView: View {
     }
 
     private func foilShimmer(size: CGSize) -> some View {
-        let w = min(size.width * 0.92, 420)
-        let h = min(size.height * 0.92, 620)
+        // ✅ use actual container size
+        let w = max(size.width, 1)
+        let h = max(size.height, 1)
 
         let phase = shimmerPhase
         let x = (-w * 0.9) + (w * 1.8) * phase

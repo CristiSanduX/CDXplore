@@ -10,12 +10,17 @@ import SwiftUI
 struct PassportView: View {
 
     @StateObject private var store = VisitedStore()
-    @State private var spreadIndex: Int = 0
 
     private let allCountries = CountriesData.all
 
+    @State private var pageIndex: Int = 0
+    @State private var stampExpandedCodeByPage: [Int: String?] = [:] // optional future use
+
+    // MARK: - Data
+
     private var visitedCountries: [Country] {
-        allCountries.filter { store.visited.contains($0.code) }
+        allCountries
+            .filter { store.visited.contains($0.code.uppercased()) }
             .sorted { $0.name < $1.name }
     }
 
@@ -25,7 +30,7 @@ struct PassportView: View {
 
         let byContinent = Dictionary(grouping: allCountries, by: \.continent)
             .mapValues { list in
-                let v = list.filter { store.visited.contains($0.code) }.count
+                let v = list.filter { store.visited.contains($0.code.uppercased()) }.count
                 return (visited: v, total: list.count)
             }
 
@@ -37,44 +42,30 @@ struct PassportView: View {
         return Double(stats.visited) / Double(t)
     }
 
-    // MARK: - Spreads
+    // MARK: - Pages (for PageFlipView)
 
-    private var spreads: [SpreadFlipView.Spread] {
-        var out: [SpreadFlipView.Spread] = []
+    private var flipPages: [PageFlipView.Page] {
+        var out: [PageFlipView.Page] = []
 
-        // 0) Cover (single)
-        out.append(
-            .init(
-                left: AnyView(
-                    VStack(spacing: 14) {
-                        PassportCoverView()
+        // 0) Cover
+        out.append(.init(isCover: true, AnyView(PassportCoverView())))
 
-                        Text("Swipe to open")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .opacity(spreadIndex == 0 ? 1 : 0)
-                            .animation(.spring(response: 0.35, dampingFraction: 0.9), value: spreadIndex)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                ),
-                right: AnyView(EmptyView()),
-                isCover: true
-            )
-        )
+        // 1) Identity
+        out.append(.init(AnyView(identityPage)))
 
-        // 1) Inside spread: Identity + Summary
-        out.append(.init(left: AnyView(identityPage), right: AnyView(summaryPage), isCover: false))
+        // 2) Summary
+        out.append(.init(AnyView(summaryPage)))
 
-        // 2+) Stamps: one spread per page (NO pairing)
-        let stampPages = buildStampPages(visitedCountries)
-        for page in stampPages {
-            out.append(.init(left: page, right: AnyView(stampsNotesPage), isCover: false))
+        // 3+) Stamps pages
+        let stampPages = buildStampPages(visitedCountries, dates: store.visitedDates)
+        for v in stampPages {
+            out.append(.init(v)) // v is AnyView already
         }
 
         return out
     }
 
-    // MARK: - Identity
+    // MARK: - Identity Page
 
     private var identityPage: some View {
         ZStack {
@@ -176,7 +167,7 @@ struct PassportView: View {
         .padding(.top, 2)
     }
 
-    // MARK: - Summary
+    // MARK: - Summary Page
 
     private var summaryPage: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -301,33 +292,10 @@ struct PassportView: View {
         }
     }
 
-    // MARK: - Stamps
+    // MARK: - Stamps Pages Builder (2 cols x 3 rows = 6 per page)
 
-    private var stampsNotesPage: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Travel Notes")
-                .font(.system(size: 18, weight: .black))
-            Text("Tips, memories, and highlights.")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
-
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.black.opacity(0.04))
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.black.opacity(0.06), lineWidth: 1))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(
-                    Text("Coming soon…")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary),
-                    alignment: .center
-                )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func buildStampPages(_ visited: [Country]) -> [AnyView] {
-        // Bigger stamps: fewer per page
-        let perPage = 9 // 3 x 3
+    private func buildStampPages(_ visited: [Country], dates: [String: Date]) -> [AnyView] {
+        let perPage = 6 // ✅ 2 cols × 3 rows (your request)
         let chunks = stride(from: 0, to: visited.count, by: perPage).map {
             Array(visited[$0..<min($0 + perPage, visited.count)])
         }
@@ -351,71 +319,105 @@ struct PassportView: View {
         }
 
         return chunks.enumerated().map { idx, chunk in
-            AnyView(
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Stamps")
-                            .font(.system(size: 18, weight: .black))
-                        Spacer()
-                        Text("\(idx + 1)/\(chunks.count)")
-                            .font(.system(size: 12, weight: .heavy))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    stampsGrid(chunk)
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            )
+            AnyView(StampPage(chunk: chunk, dates: dates, pageIndex: idx + 1, pageCount: chunks.count))
         }
     }
 
-    private func stampsGrid(_ list: [Country]) -> some View {
-        let cols = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-        return LazyVGrid(columns: cols, spacing: 12) {
-            ForEach(list) { c in
-                StampView(country: c)
+    /// One stamps page (2 columns, bigger stamps, 3 rows max).
+    private struct StampPage: View {
+        let chunk: [Country]
+        let dates: [String: Date]
+        let pageIndex: Int
+        let pageCount: Int
+
+        @State private var expandedCode: String? = nil
+
+        private let colSpacing: CGFloat = 16
+        private let rowSpacing: CGFloat = 16
+
+        var body: some View {
+            GeometryReader { geo in
+                let availableWidth = geo.size.width
+                let cellSide = floor((availableWidth - colSpacing) / 2)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Stamps")
+                                .font(.system(size: 18, weight: .black))
+                            Text("Page \(pageIndex) / \(pageCount)")
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Badge(text: "\(chunk.count)", icon: "seal.fill")
+                    }
+
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: colSpacing),
+                            GridItem(.flexible(), spacing: colSpacing)
+                        ],
+                        spacing: rowSpacing
+                    ) {
+                        ForEach(chunk) { c in
+                            let code = c.code.uppercased()
+                            StampView(
+                                country: c,
+                                visitedAt: dates[code],
+                                expandedCode: $expandedCode
+                            )
+                            .frame(width: cellSide, height: cellSide)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }
 
-    // MARK: - Layout
+    // MARK: - Body (Fullscreen page flip)
 
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                let available = geo.size.height
-                let passportH = min(available * 0.72, 600)
+                let w = geo.size.width
+                let h = geo.size.height
 
-                VStack(spacing: 10) {
-                    Spacer(minLength: 6)
+                // ✅ Fill the screen as much as possible while keeping the “passport” feel
+                let pageW = w - 20
+                let pageH = h - 14
 
-                    SpreadFlipView(spreads: spreads, index: $spreadIndex)
-                        .frame(height: passportH)
-                        .frame(maxWidth: .infinity, alignment: .center)
-
-                    HStack(spacing: 8) {
-                        ForEach(0..<spreads.count, id: \.self) { i in
-                            Capsule()
-                                .fill(Color.black.opacity(0.75))
-                                .frame(width: i == spreadIndex ? 16 : 6, height: 6)
-                                .opacity(i == spreadIndex ? 1 : 0.28)
-                                .animation(.spring(response: 0.35, dampingFraction: 0.9), value: spreadIndex)
-                                .onTapGesture { spreadIndex = i }
+                VStack(spacing: 0) {
+                    PageFlipView(
+                        pages: flipPages,
+                        index: $pageIndex
+                    )
+                    .frame(width: pageW, height: pageH)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .overlay(alignment: .bottom) {
+                        // subtle dots like a “page indicator”, optional
+                        HStack(spacing: 8) {
+                            ForEach(0..<flipPages.count, id: \.self) { i in
+                                Capsule()
+                                    .fill(Color.black.opacity(0.75))
+                                    .frame(width: i == pageIndex ? 16 : 6, height: 6)
+                                    .opacity(i == pageIndex ? 1 : 0.25)
+                                    .animation(.spring(response: 0.35, dampingFraction: 0.9), value: pageIndex)
+                                    .onTapGesture { pageIndex = i }
+                            }
                         }
+                        .padding(.bottom, 10)
                     }
-                    .padding(.top, 2)
-
-                    Spacer(minLength: 10)
                 }
-                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .overlay(
-                LinearGradient(colors: [.black.opacity(0.08), .clear],
-                               startPoint: .top, endPoint: .bottom)
-                .frame(height: 22),
-                alignment: .top
-            )
             .navigationTitle("Passport")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { store.start() }

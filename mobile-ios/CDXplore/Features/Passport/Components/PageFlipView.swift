@@ -2,69 +2,92 @@
 //  PageFlipView.swift
 //  CDXplore
 //
-//  Created by Cristi Sandu on 17.12.2025.
+//  Created by Cristi Sandu on 21.12.2025.
 //
 
 
+//
+//  PageFlipView.swift
+//  CDXplore
+//
+//  Premium single-page flip (cover + pages)
+//
+
 import SwiftUI
+import UIKit
 
 struct PageFlipView: View {
-    let pages: [AnyView]
+
+    // MARK: - Model
+
+    struct Page: Identifiable {
+        let id = UUID()
+        let content: AnyView
+        var isCover: Bool = false
+
+        init(isCover: Bool = false, _ content: AnyView) {
+            self.isCover = isCover
+            self.content = content
+        }
+    }
+
+    let pages: [Page]
     @Binding var index: Int
 
-    // gesture
-    @GestureState private var dragX: CGFloat = 0
-    @State private var animProgress: CGFloat = 0
-    @State private var isAnimating = false
+    // MARK: - Gesture / animation state
 
+    @GestureState private var dragX: CGFloat = 0
+    @State private var animProgress: CGFloat = 0          // -1...1
+    @State private var flipToken = UUID()                 // cancels previous async updates
+
+    // UX
     private let edgeTapWidth: CGFloat = 70
-    private let threshold: CGFloat = 0.28
+    private let threshold: CGFloat = 0.23                 // how far you must swipe to complete
 
     var body: some View {
         GeometryReader { geo in
             let w = max(geo.size.width, 1)
-            let progress = clamp((dragX / w) + animProgress, -1, 1)
+            let h = max(geo.size.height, 1)
+
+            // live progress: drag drives it, plus any running animation
+            let raw = (dragX / w) + animProgress
+            let progress = clamp(raw, -1, 1)
+            let t = min(1, abs(progress))
 
             ZStack {
-                // Background "paper" so it feels like a book, not floating cards
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 10)
-
                 // Under page (revealed during flip)
                 if progress > 0, let next = page(at: index + 1) {
-                    next
-                        .padding(18)
-                        .opacity(0.92)
+                    pageShell(next, in: geo.size)
+                        .opacity(0.96)
+                        .overlay(underShadow(t: t, dir: 1).opacity(0.9))
                 } else if progress < 0, let prev = page(at: index - 1) {
-                    prev
-                        .padding(18)
-                        .opacity(0.92)
+                    pageShell(prev, in: geo.size)
+                        .opacity(0.96)
+                        .overlay(underShadow(t: t, dir: -1).opacity(0.9))
                 }
 
-                // Current page (the one that flips)
+                // Current page (flipping)
                 if let current = page(at: index) {
-                    current
-                        .padding(18)
-                        .modifier(Flip3D(progress: progress))
-                        .allowsHitTesting(!isAnimating) // prevent spam inputs mid animation
+                    pageShell(current, in: geo.size)
+                        .modifier(PremiumFlip3D(progress: progress, isCover: current.isCover))
                 }
 
-                // Edge tap zones
+                // Edge tap zones (tap to flip)
                 HStack(spacing: 0) {
                     Color.clear
                         .contentShape(Rectangle())
-                        .frame(width: edgeTapWidth)
+                        .frame(width: edgeTapWidth, height: h)
                         .onTapGesture { flipPrev() }
 
                     Spacer(minLength: 0)
 
                     Color.clear
                         .contentShape(Rectangle())
-                        .frame(width: edgeTapWidth)
+                        .frame(width: edgeTapWidth, height: h)
                         .onTapGesture { flipNext() }
                 }
             }
+            .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 10, coordinateSpace: .local)
                     .updating($dragX) { value, state, _ in
@@ -75,65 +98,99 @@ struct PageFlipView: View {
                     }
             )
         }
-        .frame(height: 560) // poți schimba după gust
-        .padding(.horizontal, 14)
+    }
+
+    // MARK: - Page shell
+
+    private func pageShell(_ page: Page, in size: CGSize) -> some View {
+        ZStack {
+            // paper body
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                )
+
+            // subtle paper grain / wash so it feels like a document
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.02),
+                            Color.clear,
+                            Color.black.opacity(0.015)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .blendMode(.multiply)
+                .allowsHitTesting(false)
+
+            // content
+            page.content
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        }
+        .frame(width: size.width, height: size.height)
+        .clipped()
     }
 
     // MARK: - Actions
 
     private func flipNext() {
-        guard !isAnimating else { return }
         guard index < pages.count - 1 else { return }
-
-        isAnimating = true
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
-            animProgress = 1
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
-            index += 1
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.95)) {
-                animProgress = 0
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { isAnimating = false }
-        }
+        startFlip(to: 1, then: index + 1)
     }
 
     private func flipPrev() {
-        guard !isAnimating else { return }
         guard index > 0 else { return }
+        startFlip(to: -1, then: index - 1)
+    }
 
-        isAnimating = true
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
-            animProgress = -1
+    private func startFlip(to direction: CGFloat, then nextIndex: Int) {
+        flipToken = UUID()
+        let token = flipToken
+
+        // snap to direction fast (premium but responsive)
+        animProgress = 0
+        hapticStart(isCover: pages[safe: index]?.isCover ?? false)
+
+        withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
+            animProgress = direction
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
-            index -= 1
+
+        // commit the index early so user can continue fast
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+            guard token == flipToken else { return }
+            index = nextIndex
+            hapticFinish()
             withAnimation(.spring(response: 0.45, dampingFraction: 0.95)) {
                 animProgress = 0
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { isAnimating = false }
         }
     }
 
     private func finishDrag(_ dxNormalized: CGFloat) {
-        guard !isAnimating else { return }
-
-        // drag left => next (negative translation), drag right => prev (positive translation)
         if dxNormalized < -threshold, index < pages.count - 1 {
             flipNext()
         } else if dxNormalized > threshold, index > 0 {
             flipPrev()
         } else {
             // snap back
-            isAnimating = true
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+            flipToken = UUID()
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.90)) {
                 animProgress = 0
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { isAnimating = false }
         }
     }
 
-    private func page(at i: Int) -> AnyView? {
+    // MARK: - Helpers
+
+    private func page(at i: Int) -> Page? {
         guard i >= 0 && i < pages.count else { return nil }
         return pages[i]
     }
@@ -141,54 +198,168 @@ struct PageFlipView: View {
     private func clamp(_ n: CGFloat, _ a: CGFloat, _ b: CGFloat) -> CGFloat {
         max(a, min(b, n))
     }
+
+    private func underShadow(t: CGFloat, dir: CGFloat) -> some View {
+        let alpha = Double(0.18 * t)
+        let x: CGFloat = dir > 0 ? -18 : 18
+
+        return RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [.black.opacity(alpha), .clear],
+                    startPoint: dir > 0 ? .leading : .trailing,
+                    endPoint: dir > 0 ? .trailing : .leading
+                )
+            )
+            .blur(radius: 10)
+            .offset(x: x)
+            .allowsHitTesting(false)
+    }
+
+
+    // MARK: - Haptics
+
+    private func hapticStart(isCover: Bool) {
+        let gen = UIImpactFeedbackGenerator(style: isCover ? .soft : .light)
+        gen.prepare()
+        gen.impactOccurred(intensity: isCover ? 0.65 : 0.78)
+    }
+
+    private func hapticFinish() {
+        let gen = UIImpactFeedbackGenerator(style: .rigid)
+        gen.prepare()
+        gen.impactOccurred(intensity: 0.88)
+    }
 }
 
-// MARK: - 3D flip modifier
+// MARK: - Premium 3D flip modifier
 
-private struct Flip3D: ViewModifier {
-    let progress: CGFloat // -1...1
+private struct PremiumFlip3D: ViewModifier {
+    let progress: CGFloat              // -1...1
+    let isCover: Bool
 
     func body(content: Content) -> some View {
-        // progress > 0 => flipping to next (rotate left)
-        // progress < 0 => flipping to prev (rotate right)
-        let angle = Double(-progress) * 150 // 0..150 degrees (keeps it premium, not full 180 harsh)
+        let t = min(1, abs(progress))
+        let sign: CGFloat = progress >= 0 ? 1 : -1
+
+        // cover flips a touch heavier (more “book”)
+        let maxAngle: Double = isCover ? 152 : 145
+        let angle = Double(-progress) * maxAngle
 
         return content
-            .overlay(
-                // subtle shadow during flip
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.black.opacity(shadowOpacity))
-                    .blur(radius: 18)
-                    .offset(x: shadowOffsetX, y: 0)
-                    .allowsHitTesting(false)
+            .overlay(depthShadow(t: t, sign: sign))
+            .overlay(glare(t: t, sign: sign))
+            .overlay(edgeShade(t: t, sign: sign))
+            .overlay(backfaceDimming(t: t))
+            .overlay(pageCurl(t: t, sign: sign))
+            .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.78)
+            .scaleEffect(1 - (isCover ? 0.020 : 0.024) * t)
+            .opacity(Double(1 - 0.06 * t))
+    }
+
+    private func depthShadow(t: CGFloat, sign: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(Color.black.opacity(0.13 * (1 - abs(0.5 - Double(t)) * 2)))
+            .blur(radius: 22)
+            .offset(x: sign > 0 ? 28 : -28)
+            .allowsHitTesting(false)
+            .opacity(t > 0.01 ? 1 : 0)
+    }
+
+    private func glare(t: CGFloat, sign: CGFloat) -> some View {
+        let alpha = Double(0.22 * t)
+        let x = (sign * (36 + 130 * t))
+
+        return RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .white.opacity(alpha),
+                        .white.opacity(alpha * 0.30),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
-            .rotation3DEffect(
-                .degrees(angle),
-                axis: (x: 0, y: 1, z: 0),
-                perspective: 0.7
-            )
-            .scaleEffect(scale)
-            .opacity(opacity)
+            .rotationEffect(.degrees(sign > 0 ? -18 : 18))
+            .offset(x: x, y: -10)
+            .blur(radius: 6)
+            .blendMode(.screen)
+            .allowsHitTesting(false)
+            .opacity(t > 0.02 ? 1 : 0)
     }
 
-    private var t: CGFloat { min(1, abs(progress)) }
-
-    private var shadowOpacity: Double {
-        // peak around mid-flip
-        Double(0.10 * (1 - abs(0.5 - t) * 2))
+    private func edgeShade(t: CGFloat, sign: CGFloat) -> some View {
+        let alpha = Double(0.11 * t)
+        return HStack(spacing: 0) {
+            if sign < 0 { Spacer(minLength: 0) }
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.black.opacity(alpha), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: 20)
+            if sign > 0 { Spacer(minLength: 0) }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .allowsHitTesting(false)
+        .opacity(t > 0.02 ? 1 : 0)
     }
 
-    private var shadowOffsetX: CGFloat {
-        // shadow goes opposite direction of flip
-        progress >= 0 ? 22 : -22
+    private func backfaceDimming(t: CGFloat) -> some View {
+        let x = clamp01((t - 0.55) / 0.45)
+        return RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(Color.black.opacity(Double(0.18 * x)))
+            .blendMode(.multiply)
+            .allowsHitTesting(false)
+            .opacity(t > 0.55 ? 1 : 0)
     }
 
-    private var scale: CGFloat {
-        1 - (0.03 * t)
+    private func pageCurl(t: CGFloat, sign: CGFloat) -> some View {
+        let curl = clamp01((t - 0.06) / 0.94)
+        let width: CGFloat = 34 + 28 * curl
+        let x = sign > 0 ? (22 + 20 * curl) : (-22 - 20 * curl)
+
+        return HStack(spacing: 0) {
+            if sign < 0 { Spacer(minLength: 0) }
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(Double(0.55 * curl)),
+                            Color.white.opacity(Double(0.12 * curl)),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: width)
+                .blur(radius: 1.6)
+                .offset(x: x)
+
+            if sign > 0 { Spacer(minLength: 0) }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .blendMode(.screen)
+        .allowsHitTesting(false)
+        .opacity(curl > 0.01 ? 1 : 0)
     }
 
-    private var opacity: Double {
-        // keep readable
-        Double(1 - 0.08 * t)
+    private func clamp01(_ n: CGFloat) -> CGFloat { max(0, min(1, n)) }
+}
+
+// MARK: - Safe index helper
+
+private extension Array {
+    subscript(safe i: Int) -> Element? {
+        guard i >= 0 && i < count else { return nil }
+        return self[i]
     }
 }
