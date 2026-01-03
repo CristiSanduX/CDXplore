@@ -14,16 +14,20 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
+            List {
                 if let u = auth.user {
-                    Text(u.email ?? "Logged in").foregroundStyle(.secondary)
+                    Section {
+                        Text(u.email ?? "Logged in")
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                Button("Sign out") {
-                    auth.signOut()
+
+                Section {
+                    NavigationLink("Settings") {
+                        SettingsView()
+                    }
                 }
-                .buttonStyle(.bordered)
             }
-            .padding()
             .navigationTitle("Profile")
         }
     }

@@ -5,7 +5,6 @@
 //  Created by Cristi Sandu on 15.12.2025.
 //
 
-
 import Foundation
 import FirebaseAuth
 import Combine
@@ -15,6 +14,7 @@ import UIKit
 
 @MainActor
 final class AuthViewModel: ObservableObject {
+
     @Published var user: User? = Auth.auth().currentUser
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -30,6 +30,8 @@ final class AuthViewModel: ObservableObject {
     deinit {
         if let handle { Auth.auth().removeStateDidChangeListener(handle) }
     }
+
+    // MARK: - Sign In
 
     func signInWithGoogle() async {
         guard let clientID = FirebaseApp.app()?.options.clientID else {
@@ -49,11 +51,9 @@ final class AuthViewModel: ObservableObject {
 
         do {
             let config = GIDConfiguration(clientID: clientID)
-            GIDSignIn.sharedInstance.configuration = config   // ✅ AICI
+            GIDSignIn.sharedInstance.configuration = config
 
-            let result = try await GIDSignIn.sharedInstance.signIn(
-                withPresenting: rootVC                          // ✅ FĂRĂ configuration
-            )
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
 
             guard let idToken = result.user.idToken?.tokenString else {
                 throw NSError(
@@ -75,6 +75,7 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Sign Out
 
     func signOut() {
         do {
@@ -82,6 +83,32 @@ final class AuthViewModel: ObservableObject {
             GIDSignIn.sharedInstance.signOut()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Delete Account (App Store requirement)
+
+    /// Deletes the current Firebase account.
+    /// Note: Firebase may require a "recent login". If you hit that, ask the user to sign out and sign in again.
+    func deleteAccount() async throws {
+        errorMessage = nil
+
+        guard let u = Auth.auth().currentUser else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // Optionally: cleanup user data here (Firestore/Storage) BEFORE deleting auth user.
+            try await u.delete()
+
+            // Ensure local state is cleared
+            user = nil
+            GIDSignIn.sharedInstance.signOut()
+        } catch {
+            // Bubble up so the UI can show a proper message
+            errorMessage = error.localizedDescription
+            throw error
         }
     }
 }
